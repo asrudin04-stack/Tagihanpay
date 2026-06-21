@@ -32,7 +32,8 @@ import {
   Shield,
   LogIn,
   LogOut,
-  Lock
+  Lock,
+  FileSpreadsheet
 } from "lucide-react";
 
 import { 
@@ -53,6 +54,7 @@ import MasterBiaya from "./components/MasterBiaya";
 import TransaksiView from "./components/TransaksiView";
 import LaporanView from "./components/LaporanView";
 import PengaturanAkses from "./components/PengaturanAkses";
+import SyncSheetsView from "./components/SyncSheetsView";
 
 export default function App() {
   
@@ -197,6 +199,39 @@ export default function App() {
   }, []);
 
   // --- CRUD DISPATCHERS SYNCS ---
+
+  // Google Sheets import mergers
+  const handleImportPelanggan = (imported: Pelanggan[]) => {
+    setPelangganList(prev => {
+      const merged = [...prev];
+      imported.forEach(newItem => {
+        const index = merged.findIndex(p => p.id === newItem.id);
+        if (index > -1) {
+          merged[index] = newItem;
+        } else {
+          merged.push(newItem);
+        }
+      });
+      localStorage.setItem("pembayaran_pelanggan", JSON.stringify(merged));
+      return merged;
+    });
+  };
+
+  const handleImportTransaksi = (imported: Transaksi[]) => {
+    setTransaksiList(prev => {
+      const merged = [...prev];
+      imported.forEach(newItem => {
+        const index = merged.findIndex(t => t.id === newItem.id);
+        if (index > -1) {
+          merged[index] = newItem;
+        } else {
+          merged.push(newItem);
+        }
+      });
+      localStorage.setItem("pembayaran_transaksi", JSON.stringify(merged));
+      return merged;
+    });
+  };
 
   // Pelanggan CRUD
   const handleAddPelanggan = (p: Pelanggan | Pelanggan[]) => {
@@ -534,6 +569,18 @@ export default function App() {
                 <Lock size={15} />
                 User & Sandi Akses
               </button>
+
+              <button
+                onClick={() => setActiveTab("sheets")}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                  activeTab === "sheets"
+                    ? "bg-indigo-600 text-white shadow-xs font-bold"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                }`}
+              >
+                <FileSpreadsheet size={15} className="text-emerald-500" />
+                Sinkron Google Sheets
+              </button>
             </div>
 
             {/* Danger Zone Utilities (Only for Administrator) */}
@@ -671,6 +718,15 @@ export default function App() {
                 }`}
               >
                 <Lock size={15} /> User & Sandi Akses
+              </button>
+
+              <button
+                onClick={() => { setActiveTab("sheets"); setIsMobileMenuOpen(false); }}
+                className={`py-2 px-3 text-xs font-bold rounded-lg text-left flex items-center gap-2.5 ${
+                  activeTab === "sheets" ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-slate-850"
+                }`}
+              >
+                <FileSpreadsheet size={15} className="text-emerald-500" /> Sinkron Google Sheets
               </button>
 
               {userRole === "administrator" && (
@@ -833,6 +889,16 @@ export default function App() {
                     setKasirUserCred(u);
                     setKasirPassCred(p);
                   }}
+                />
+              )}
+
+              {/* RENDER VIEW: SINKRONISASI GOOGLE SHEETS */}
+              {activeTab === "sheets" && (
+                <SyncSheetsView 
+                  pelangganList={pelangganList}
+                  transaksiList={transaksiList}
+                  onImportPelanggan={handleImportPelanggan}
+                  onImportTransaksi={handleImportTransaksi}
                 />
               )}
 
