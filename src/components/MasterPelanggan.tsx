@@ -183,14 +183,17 @@ export default function MasterPelanggan({
         const list = Array.isArray(parsed) ? parsed : [parsed];
         const sanitized = list.map((item: any) => {
           const l = String(item.layanan || "PLN").toUpperCase().trim() as 'PLN' | 'PDAM' | 'WIFI';
+          const rawNominal = item.nominalTarif ?? item.tarifBulanan ?? item.tarif_bulanan ?? item.nominal_tarif ?? item.tarif ?? item.biaya;
+          const nominalTarifVal = rawNominal !== undefined && rawNominal !== null && rawNominal !== "" ? Number(rawNominal) : undefined;
           return {
             nama: String(item.nama || "").trim(),
             noTelp: String(item.noTelp || item.no_telp || item.telepon || "").trim(),
             alamat: String(item.alamat || "").trim(),
             layanan: ['PLN', 'PDAM', 'WIFI'].includes(l) ? l : 'PLN',
             noMeter: String(item.noMeter || item.no_meter || item.id_meter || item.meter || "").trim(),
-            idTarif: String(item.idTarif || item.id_tarif || item.tarif || item.paket || "").trim() || undefined,
+            idTarif: String(item.idTarif || item.id_tarif || item.paket || "").trim() || undefined,
             idTanggal: String(item.idTanggal || item.id_tanggal || item.tanggal || item.jadwal || item.tempo || "").trim() || undefined,
+            nominalTarif: (nominalTarifVal !== undefined && !isNaN(nominalTarifVal)) ? nominalTarifVal : undefined
           };
         });
         const validList = sanitized.filter(x => x.nama !== "");
@@ -251,19 +254,20 @@ export default function MasterPelanggan({
           let noMeterVal = "";
           let idTarifVal = "";
           let idTanggalVal = "";
+          let nominalTarifVal: number | undefined = undefined;
 
-          const getIndexByHeader = (name: string, fallbackIdx: number) => {
-            const index = headers.findIndex(h => h.includes(name));
+          const getIndexByHeader = (names: string[], fallbackIdx: number) => {
+            const index = headers.findIndex(h => names.some(name => h.includes(name)));
             return index !== -1 ? index : fallbackIdx;
           };
 
-          const namaIdx = getIndexByHeader("nama", 0);
-          const telpIdx = getIndexByHeader("telp", 1);
-          const alamatIdx = getIndexByHeader("alamat", 2);
-          const layananIdx = getIndexByHeader("layan", 3);
-          const meterIdx = getIndexByHeader("meter", 4);
-          const tarifIdx = getIndexByHeader("tarif", 5);
-          const tanggalIdx = getIndexByHeader("tanggal", 6);
+          const namaIdx = getIndexByHeader(["nama"], 0);
+          const telpIdx = getIndexByHeader(["telp", "hp", "kontak", "phone", "no"], 1);
+          const alamatIdx = getIndexByHeader(["alamat", "address"], 2);
+          const layananIdx = getIndexByHeader(["layan"], 3);
+          const meterIdx = getIndexByHeader(["meter", "id_meter", "account"], 4);
+          const tarifIdx = getIndexByHeader(["tarif", "nominal", "biaya", "harga", "rate"], 5);
+          const tanggalIdx = getIndexByHeader(["tanggal", "tempo", "due"], 6);
 
           namaVal = cleanedCols[namaIdx] || "";
           noTelpVal = cleanedCols[telpIdx] || cleanedCols[1] || "";
@@ -273,8 +277,17 @@ export default function MasterPelanggan({
           layananVal = ['PLN', 'PDAM', 'WIFI'].includes(rawLayanan) ? (rawLayanan as 'PLN' | 'PDAM' | 'WIFI') : 'PLN';
           
           noMeterVal = cleanedCols[meterIdx] || cleanedCols[4] || "";
-          idTarifVal = cleanedCols[tarifIdx] || cleanedCols[5] || "";
           idTanggalVal = cleanedCols[tanggalIdx] || cleanedCols[6] || "";
+
+          const rawTarifStr = (cleanedCols[tarifIdx] || cleanedCols[5] || "").trim();
+          if (rawTarifStr) {
+            const digitsOnlyStr = rawTarifStr.replace(/[\s\.\,Rprp]/g, "");
+            if (digitsOnlyStr && !isNaN(Number(digitsOnlyStr)) && /^\d+$/.test(digitsOnlyStr)) {
+              nominalTarifVal = Number(digitsOnlyStr);
+            } else {
+              idTarifVal = rawTarifStr;
+            }
+          }
 
           if (namaVal) {
             results.push({
@@ -285,6 +298,7 @@ export default function MasterPelanggan({
               noMeter: noMeterVal,
               idTarif: idTarifVal || undefined,
               idTanggal: idTanggalVal || undefined,
+              nominalTarif: nominalTarifVal,
             });
           }
         });
@@ -365,7 +379,8 @@ export default function MasterPelanggan({
         layanan: row.layanan,
         noMeter: row.noMeter,
         idTarif: row.idTarif || undefined,
-        idTanggal: row.idTanggal || undefined
+        idTanggal: row.idTanggal || undefined,
+        nominalTarif: row.nominalTarif
       });
     });
 
@@ -384,8 +399,8 @@ export default function MasterPelanggan({
   };
 
   const downloadTemplateCustomerCSV = () => {
-    const headers = "nama,noTelp,alamat,layanan,noMeter,idTarif,idTanggal\n";
-    const sample = "Joko Susilo,081299998888,Jl. Anggrek No. 10,PLN,53221199028,TRF-001,TGL-001\nSusi Susanti,085522221111,Perum Permai Blok D-2,WIFI,WIFI-IND-9092,TRF-005,TGL-003\nPak Amat,089911110000,Desa Makmur RT 01,PDAM,PAM-887711,TRF-003,TGL-002\n";
+    const headers = "nama,noTelp,alamat,layanan,noMeter,tarifBulanan,idTanggal\n";
+    const sample = "Joko Susilo,081299998888,Jl. Anggrek No. 10,PLN,53221199028,150000,TGL-001\nSusi Susanti,085522221111,Perum Permai Blok D-2,WIFI,WIFI-IND-9092,275000,TGL-003\nPak Amat,089911110000,Desa Makmur RT 01,PDAM,PAM-887711,95000,TGL-002\n";
     const blob = new Blob([headers + sample], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -878,7 +893,7 @@ export default function MasterPelanggan({
                           <th className="p-2">Kontak</th>
                           <th className="p-2">Layanan</th>
                           <th className="p-2">No ID Meter</th>
-                          <th className="p-2">ID Tarif</th>
+                          <th className="p-2">Tarif Bulanan</th>
                           <th className="p-2 pr-3">ID Jatuh Tempo</th>
                         </tr>
                       </thead>
@@ -897,7 +912,11 @@ export default function MasterPelanggan({
                               </span>
                             </td>
                             <td className="p-2 font-mono font-semibold">{row.noMeter}</td>
-                            <td className="p-2 font-mono text-slate-550 font-medium">{row.idTarif || <span className="text-slate-350 italic">Default</span>}</td>
+                            <td className="p-2 font-mono text-slate-550 font-medium">
+                              {row.nominalTarif !== undefined && row.nominalTarif !== null
+                                ? <span className="text-indigo-700 font-bold">{formatRupiah(row.nominalTarif)}</span>
+                                : (row.idTarif || <span className="text-slate-350 italic">Default</span>)}
+                            </td>
                             <td className="p-2 pr-3 font-mono text-slate-550 font-medium">{row.idTanggal || <span className="text-slate-350 italic">Default</span>}</td>
                           </tr>
                         ))}
