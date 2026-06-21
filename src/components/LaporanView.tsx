@@ -54,12 +54,26 @@ export default function LaporanView({
   const [filterBulan, setFilterBulan] = useState("06"); // Juni
   const [filterTahun, setFilterTahun] = useState("2026");
 
+  // --- SEARCH QUERY FOR LAPORAN ---
+  const [searchQuery, setSearchQuery] = useState("");
+
   // Active periods list for calculating arrears
   const activePeriods = ["2026-06"];
 
   // ==========================================
   // CALCULATE REPORT DATA BY CHOSEN TAB
   // ==========================================
+
+  // Filtered customer list for the Dropdown selector
+  const filteredPelangganList = useMemo(() => {
+    if (!searchQuery.trim()) return pelangganList;
+    const query = searchQuery.toLowerCase();
+    return pelangganList.filter(p => 
+      p.nama.toLowerCase().includes(query) ||
+      p.id.toLowerCase().includes(query) ||
+      (p.noMeter && p.noMeter.toLowerCase().includes(query))
+    );
+  }, [pelangganList, searchQuery]);
 
   // Report 1: Payments per Customer
   const customerReportData = useMemo(() => {
@@ -97,15 +111,45 @@ export default function LaporanView({
     return transaksiList.filter((tx) => tx.layanan === filterLayanan);
   }, [filterLayanan, transaksiList]);
 
+  // Filtered version of service payments
+  const filteredServiceReportData = useMemo(() => {
+    if (!searchQuery.trim()) return serviceReportData;
+    const query = searchQuery.toLowerCase();
+    return serviceReportData.filter(tx => 
+      tx.namaPelanggan.toLowerCase().includes(query) ||
+      tx.idPelanggan.toLowerCase().includes(query)
+    );
+  }, [serviceReportData, searchQuery]);
+
   // Report 3: Payments per Month
   const monthReportData = useMemo(() => {
     return transaksiList.filter((tx) => tx.periode.endsWith(`-${filterBulan}`));
   }, [filterBulan, transaksiList]);
 
+  // Filtered version of month payments
+  const filteredMonthReportData = useMemo(() => {
+    if (!searchQuery.trim()) return monthReportData;
+    const query = searchQuery.toLowerCase();
+    return monthReportData.filter(tx => 
+      tx.namaPelanggan.toLowerCase().includes(query) ||
+      tx.idPelanggan.toLowerCase().includes(query)
+    );
+  }, [monthReportData, searchQuery]);
+
   // Report 4: Payments per Year
   const yearReportData = useMemo(() => {
     return transaksiList.filter((tx) => tx.periode.startsWith(`${filterTahun}-`));
   }, [filterTahun, transaksiList]);
+
+  // Filtered version of year payments
+  const filteredYearReportData = useMemo(() => {
+    if (!searchQuery.trim()) return yearReportData;
+    const query = searchQuery.toLowerCase();
+    return yearReportData.filter(tx => 
+      tx.namaPelanggan.toLowerCase().includes(query) ||
+      tx.idPelanggan.toLowerCase().includes(query)
+    );
+  }, [yearReportData, searchQuery]);
 
   // Report 5: All Outstanding Arrears (Tunggakan)
   const arrearsReportData = useMemo(() => {
@@ -146,22 +190,39 @@ export default function LaporanView({
     return list;
   }, [pelangganList, transaksiList, biayaList]);
 
+  // Filtered version of arrears
+  const filteredArrearsReportData = useMemo(() => {
+    if (!searchQuery.trim()) return arrearsReportData;
+    const query = searchQuery.toLowerCase();
+    return arrearsReportData.filter(item => 
+      item.nama.toLowerCase().includes(query) ||
+      item.pelangganId.toLowerCase().includes(query)
+    );
+  }, [arrearsReportData, searchQuery]);
+
   // Get active report's sum
   const activeReportTotals = useMemo(() => {
     let dataToSum: Transaksi[] = [];
     if (activeReportTab === "pelanggan") dataToSum = customerReportData;
-    else if (activeReportTab === "jenis") dataToSum = serviceReportData;
-    else if (activeReportTab === "bulan") dataToSum = monthReportData;
-    else if (activeReportTab === "tahun") dataToSum = yearReportData;
+    else if (activeReportTab === "jenis") dataToSum = filteredServiceReportData;
+    else if (activeReportTab === "bulan") dataToSum = filteredMonthReportData;
+    else if (activeReportTab === "tahun") dataToSum = filteredYearReportData;
     else {
       // Arrears total
-      const totalArr = arrearsReportData.reduce((sum, item) => sum + item.nominal, 0);
-      return { count: arrearsReportData.length, money: totalArr };
+      const totalArr = filteredArrearsReportData.reduce((sum, item) => sum + item.nominal, 0);
+      return { count: filteredArrearsReportData.length, money: totalArr };
     }
 
     const totalMoney = dataToSum.reduce((sum, tx) => sum + tx.jumlahBayar, 0);
     return { count: dataToSum.length, money: totalMoney };
-  }, [activeReportTab, customerReportData, serviceReportData, monthReportData, yearReportData, arrearsReportData]);
+  }, [
+    activeReportTab, 
+    customerReportData, 
+    filteredServiceReportData, 
+    filteredMonthReportData, 
+    filteredYearReportData, 
+    filteredArrearsReportData
+  ]);
 
   // ==========================================
   // EXPORT UTILITY WORKFLOWS
@@ -188,7 +249,7 @@ export default function LaporanView({
     else if (activeReportTab === "jenis") {
       csvContent += `LAPORAN PEMBAYARAN JENIS LAYANAN - ${filterLayanan}\r\n`;
       csvContent += `No Invoice,ID Pelanggan,Nama Pelanggan,Periode,Tanggal Bayar,Metode,Jumlah Bayar\r\n`;
-      serviceReportData.forEach((tx) => {
+      filteredServiceReportData.forEach((tx) => {
         csvContent += `${tx.id},${tx.idPelanggan},"${tx.namaPelanggan}",${tx.periode},${tx.tanggalBayar},${tx.metodePembayaran},${tx.jumlahBayar}\r\n`;
       });
       csvContent += `Total Nominal Terbayar:,${activeReportTotals.money}\r\n`;
@@ -196,7 +257,7 @@ export default function LaporanView({
     else if (activeReportTab === "bulan") {
       csvContent += `LAPORAN PEMBAYARAN BULANAN - ${getMonthLabel(filterBulan)}\r\n`;
       csvContent += `No Invoice,ID Pelanggan,Nama Pelanggan,Layanan,Periode,Tanggal Bayar,Metode,Jumlah Bayar\r\n`;
-      monthReportData.forEach((tx) => {
+      filteredMonthReportData.forEach((tx) => {
         csvContent += `${tx.id},${tx.idPelanggan},"${tx.namaPelanggan}",${tx.layanan},${tx.periode},${tx.tanggalBayar},${tx.metodePembayaran},${tx.jumlahBayar}\r\n`;
       });
       csvContent += `Total Nominal Terbayar:,${activeReportTotals.money}\r\n`;
@@ -204,7 +265,7 @@ export default function LaporanView({
     else if (activeReportTab === "tahun") {
       csvContent += `LAPORAN PEMBAYARAN TAHUNAN - ${filterTahun}\r\n`;
       csvContent += `No Invoice,ID Pelanggan,Nama Pelanggan,Layanan,Periode,Tanggal Bayar,Metode,Jumlah Bayar\r\n`;
-      yearReportData.forEach((tx) => {
+      filteredYearReportData.forEach((tx) => {
         csvContent += `${tx.id},${tx.idPelanggan},"${tx.namaPelanggan}",${tx.layanan},${tx.periode},${tx.tanggalBayar},${tx.metodePembayaran},${tx.jumlahBayar}\r\n`;
       });
       csvContent += `Total Nominal Terbayar:,${activeReportTotals.money}\r\n`;
@@ -212,7 +273,7 @@ export default function LaporanView({
     else {
       csvContent += `LAPORAN TUNGGAKAN TAGIHAN AKTIF\r\n`;
       csvContent += `ID Pelanggan,Nama Pelanggan,Layanan,Periode Tunggakan,Nominal Tunggakan\r\n`;
-      arrearsReportData.forEach((item) => {
+      filteredArrearsReportData.forEach((item) => {
         csvContent += `${item.pelangganId},"${item.nama}",${item.layanan},${item.periode},${item.nominal}\r\n`;
       });
       csvContent += `Total Tunggakan:,${activeReportTotals.money}\r\n`;
@@ -241,7 +302,7 @@ export default function LaporanView({
         
         {/* Tab 1 */}
         <button
-          onClick={() => setActiveReportTab("pelanggan")}
+          onClick={() => { setActiveReportTab("pelanggan"); setSearchQuery(""); }}
           className={`flex flex-col items-center justify-center p-3 rounded-xl transition cursor-pointer gap-1 text-center ${
             activeReportTab === "pelanggan"
               ? "bg-slate-900 text-white shadow-xs"
@@ -254,7 +315,7 @@ export default function LaporanView({
 
         {/* Tab 2 */}
         <button
-          onClick={() => setActiveReportTab("jenis")}
+          onClick={() => { setActiveReportTab("jenis"); setSearchQuery(""); }}
           className={`flex flex-col items-center justify-center p-3 rounded-xl transition cursor-pointer gap-1 text-center ${
             activeReportTab === "jenis"
               ? "bg-slate-900 text-white shadow-xs"
@@ -267,7 +328,7 @@ export default function LaporanView({
 
         {/* Tab 3 */}
         <button
-          onClick={() => setActiveReportTab("bulan")}
+          onClick={() => { setActiveReportTab("bulan"); setSearchQuery(""); }}
           className={`flex flex-col items-center justify-center p-3 rounded-xl transition cursor-pointer gap-1 text-center ${
             activeReportTab === "bulan"
               ? "bg-slate-900 text-white shadow-xs"
@@ -280,7 +341,7 @@ export default function LaporanView({
 
         {/* Tab 4 */}
         <button
-          onClick={() => setActiveReportTab("tahun")}
+          onClick={() => { setActiveReportTab("tahun"); setSearchQuery(""); }}
           className={`flex flex-col items-center justify-center p-3 rounded-xl transition cursor-pointer gap-1 text-center ${
             activeReportTab === "tahun"
               ? "bg-slate-900 text-white shadow-xs"
@@ -293,7 +354,7 @@ export default function LaporanView({
 
         {/* Tab 5 */}
         <button
-          onClick={() => setActiveReportTab("tunggakan")}
+          onClick={() => { setActiveReportTab("tunggakan"); setSearchQuery(""); }}
           className={`flex flex-col items-center justify-center p-3 rounded-xl transition cursor-pointer col-span-2 md:col-span-1 gap-1 text-center ${
             activeReportTab === "tunggakan"
               ? "bg-rose-950 text-white shadow-xs"
@@ -336,54 +397,87 @@ export default function LaporanView({
         </div>
 
         {/* Dynamic Filters Forms render */}
-        <div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
           
-          {/* TAB 1: Per Pelanggan Filter */}
-          {activeReportTab === "pelanggan" && (
-            <div className="space-y-1.5 max-w-md">
-              <label className="text-[10px] font-mono uppercase text-slate-500 font-semibold block">Pilih Nama / ID Pelanggan</label>
-              <select
-                value={filterPelangganId}
-                onChange={(e) => setFilterPelangganId(e.target.value)}
-                className="w-full text-xs p-2.5 border border-slate-250 rounded-lg text-slate-800 bg-white font-medium focus:border-indigo-500"
-              >
-                <option value="">-- Silakan Pilih Pelanggan --</option>
-                {pelangganList.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    [{p.id}] {p.nama} - {p.layanan}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/* LHS Panel: Core parameters */}
+          <div>
+            {/* TAB 1: Per Pelanggan Filter */}
+            {activeReportTab === "pelanggan" && (
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-mono uppercase text-slate-500 font-semibold block flex items-center justify-between">
+                    <span>1. Tulis Nama / ID Pelanggan untuk mencari</span>
+                    {searchQuery && (
+                      <button 
+                        onClick={() => setSearchQuery("")} 
+                        className="text-[10px] text-indigo-600 hover:underline font-semibold font-sans normal-case"
+                      >
+                        Reset Cari
+                      </button>
+                    )}
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-slate-400">
+                      <Search size={14} />
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="Ketik Nama, ID, atau No ID Meter..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full text-xs pl-9 pr-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:border-indigo-600 text-slate-800 bg-white shadow-xs"
+                    />
+                  </div>
+                </div>
 
-          {/* TAB 2: Per Jenis Layanan Filter */}
-          {activeReportTab === "jenis" && (
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-mono uppercase text-slate-500 font-semibold block">Jenis Layanan Digital</label>
-              <div className="flex gap-2">
-                {(["PLN", "PDAM", "WIFI"] as const).map((l) => (
-                  <button
-                    key={l}
-                    onClick={() => setFilterLayanan(l)}
-                    className={`px-4 py-2 border text-xs font-bold rounded-lg transition overflow-hidden cursor-pointer ${
-                      filterLayanan === l
-                        ? "bg-slate-900 border-slate-900 text-white"
-                        : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                    }`}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-mono uppercase text-slate-500 font-semibold block">2. Pilih Pelanggan Terfilter</label>
+                  <select
+                    value={filterPelangganId}
+                    onChange={(e) => setFilterPelangganId(e.target.value)}
+                    className="w-full text-xs p-2.5 border border-slate-250 rounded-lg text-slate-800 bg-white font-medium focus:border-indigo-500"
                   >
-                    {l === "PLN" ? "PLN (Tagihan Listrik)" : 
-                     l === "PDAM" ? "PDAM (Tagihan Air)" : 
-                     "WIFI (Tagihan Internet)"}
-                  </button>
-                ))}
+                    <option value="">
+                      {filteredPelangganList.length === 0 
+                        ? "-- Pelanggan Tidak Ditemukan --" 
+                        : `-- Pilih dari ${filteredPelangganList.length} Nama --`}
+                    </option>
+                    {filteredPelangganList.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nama} ({p.layanan} - {p.id})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* TAB 3: Per Bulan Filter */}
-          {activeReportTab === "bulan" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg">
+            {/* TAB 2: Per Jenis Layanan Filter */}
+            {activeReportTab === "jenis" && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-mono uppercase text-slate-500 font-semibold block">Jenis Layanan Digital</label>
+                <div className="flex flex-wrap gap-2">
+                  {(["PLN", "PDAM", "WIFI"] as const).map((l) => (
+                    <button
+                      key={l}
+                      onClick={() => setFilterLayanan(l)}
+                      className={`px-4 py-2 border text-xs font-bold rounded-lg transition overflow-hidden cursor-pointer ${
+                        filterLayanan === l
+                          ? "bg-slate-900 border-slate-900 text-white"
+                          : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      {l === "PLN" ? "PLN (Listrik)" : 
+                       l === "PDAM" ? "PDAM (Air)" : 
+                       "WIFI (Internet)"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: Per Bulan Filter */}
+            {activeReportTab === "bulan" && (
               <div className="space-y-1.5">
                 <label className="text-[10px] font-mono uppercase text-slate-500 font-semibold block">Pilih Bulan Buku</label>
                 <select
@@ -398,31 +492,60 @@ export default function LaporanView({
                   ))}
                 </select>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* TAB 4: Per Tahun Filter */}
-          {activeReportTab === "tahun" && (
-            <div className="space-y-1.5 max-w-sm">
-              <label className="text-[10px] font-mono uppercase text-slate-500 font-semibold block">Pilih Tahun Pembukuan</label>
-              <select
-                value={filterTahun}
-                onChange={(e) => setFilterTahun(e.target.value)}
-                className="w-full text-xs p-2.5 border border-slate-250 rounded-lg text-slate-800 bg-white font-mono focus:border-indigo-500"
-              >
-                {TAHUN_LIST.map((y) => (
-                  <option key={y} value={y}>
-                    Tahun Pembukuan {y}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+            {/* TAB 4: Per Tahun Filter */}
+            {activeReportTab === "tahun" && (
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-mono uppercase text-slate-500 font-semibold block">Pilih Tahun Pembukuan</label>
+                <select
+                  value={filterTahun}
+                  onChange={(e) => setFilterTahun(e.target.value)}
+                  className="w-full text-xs p-2.5 border border-slate-250 rounded-lg text-slate-800 bg-white font-mono focus:border-indigo-500"
+                >
+                  {TAHUN_LIST.map((y) => (
+                    <option key={y} value={y}>
+                      Tahun Pembukuan {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
-          {/* TAB 5: Tunggakan Info Indicator */}
-          {activeReportTab === "tunggakan" && (
-            <div className="text-xs text-slate-500">
-              Saringan otomatis aktif menampilkan semua tunggakan belum lunas periode bulan ini (Juni 2026).
+            {/* TAB 5: Tunggakan Info Indicator */}
+            {activeReportTab === "tunggakan" && (
+              <div className="text-xs text-slate-500 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                Saringan otomatis aktif menampilkan semua tunggakan belum lunas periode bulan ini (Juni 2026).
+              </div>
+            )}
+          </div>
+
+          {/* RHS Panel: Global search filter by Client Name/ID for aggregate charts & lists */}
+          {activeReportTab !== "pelanggan" && (
+            <div className="space-y-1.5 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+              <label className="text-[10px] font-mono uppercase text-slate-500 font-semibold block flex items-center justify-between">
+                <span>Cari / Saring Nama Pelanggan</span>
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery("")} 
+                    className="text-[10px] text-indigo-600 hover:underline font-semibold font-sans normal-case"
+                  >
+                    Bersihkan
+                  </button>
+                )}
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-slate-400">
+                  <Search size={14} />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Ketik Nama atau ID Pelanggan..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full text-xs pl-9 pr-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:border-indigo-600 focus:bg-white text-slate-850 bg-white shadow-xs"
+                />
+              </div>
             </div>
           )}
 
@@ -630,9 +753,9 @@ export default function LaporanView({
                   
                   {/* DATA ROWS FOR TRANSACTIONS */}
                   {activeReportTab !== "tunggakan" && (
-                    (activeReportTab === "jenis" ? serviceReportData :
-                     activeReportTab === "bulan" ? monthReportData :
-                     yearReportData).map((tx) => (
+                    (activeReportTab === "jenis" ? filteredServiceReportData :
+                     activeReportTab === "bulan" ? filteredMonthReportData :
+                     filteredYearReportData).map((tx) => (
                       <tr key={tx.id} className="hover:bg-slate-50/50">
                         <td className="p-3 pl-4 font-mono font-bold text-slate-900">{tx.id}</td>
                         <td className="p-3">
@@ -660,7 +783,7 @@ export default function LaporanView({
 
                   {/* DATA ROWS FOR ARREARS TUNGGAKAN SPP */}
                   {activeReportTab === "tunggakan" && (
-                    arrearsReportData.map((item, idx) => (
+                    filteredArrearsReportData.map((item, idx) => (
                       <tr key={idx} className="hover:bg-rose-50/15">
                         <td className="p-3 pl-4 font-mono font-bold text-slate-900">{item.pelangganId}</td>
                         <td className="p-3 font-bold text-slate-800">{item.nama}</td>
@@ -700,11 +823,27 @@ export default function LaporanView({
                     </tr>
                   )}
 
-                  {/* Summary Totals Row at the bottom of the table */}
+                  {/* Search mismatch empty state */}
                   {((activeReportTab === "jenis" ? serviceReportData :
                      activeReportTab === "bulan" ? monthReportData :
                      activeReportTab === "tahun" ? yearReportData :
-                     arrearsReportData).length > 0) && (
+                     arrearsReportData).length > 0) &&
+                   ((activeReportTab === "jenis" ? filteredServiceReportData :
+                     activeReportTab === "bulan" ? filteredMonthReportData :
+                     activeReportTab === "tahun" ? filteredYearReportData :
+                     filteredArrearsReportData).length === 0) && (
+                    <tr>
+                      <td colSpan={7} className="p-12 text-center text-slate-400 text-xs italic bg-slate-50/40">
+                        Tidak ada data yang cocok dengan pencarian "{searchQuery}"
+                      </td>
+                    </tr>
+                  )}
+
+                  {/* Summary Totals Row at the bottom of the table */}
+                  {((activeReportTab === "jenis" ? filteredServiceReportData :
+                     activeReportTab === "bulan" ? filteredMonthReportData :
+                     activeReportTab === "tahun" ? filteredYearReportData :
+                     filteredArrearsReportData).length > 0) && (
                     <tr className="bg-slate-900 text-white font-mono font-bold border-t border-slate-100">
                       <td colSpan={activeReportTab !== "tunggakan" ? 6 : 5} className="p-4 pl-6 text-sm text-slate-300">
                         TOTAL REKAPITULASI LAPORAN:
