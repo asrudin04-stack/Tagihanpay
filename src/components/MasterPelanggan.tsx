@@ -21,7 +21,9 @@ import {
   Phone,
   Download,
   AlertCircle,
-  FileText
+  FileText,
+  DollarSign,
+  Tag
 } from "lucide-react";
 import { Pelanggan, BiayaTarif, TanggalPembayaran, formatRupiah } from "../types";
 
@@ -32,6 +34,9 @@ interface MasterPelangganProps {
   onAddPelanggan: (pelanggan: Pelanggan | Pelanggan[]) => void;
   onUpdatePelanggan: (pelanggan: Pelanggan) => void;
   onDeletePelanggan: (id: string) => void;
+  onAddBiaya: (biaya: BiayaTarif) => void;
+  onUpdateBiaya: (biaya: BiayaTarif) => void;
+  onDeleteBiaya: (id: string) => void;
 }
 
 export default function MasterPelanggan({
@@ -40,7 +45,10 @@ export default function MasterPelanggan({
   tanggalList,
   onAddPelanggan,
   onUpdatePelanggan,
-  onDeletePelanggan
+  onDeletePelanggan,
+  onAddBiaya,
+  onUpdateBiaya,
+  onDeleteBiaya
 }: MasterPelangganProps) {
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState("");
@@ -61,6 +69,63 @@ export default function MasterPelanggan({
 
   // Error validations
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  // Sub-tab state for merged Pelanggan and Biaya menu
+  const [subTab, setSubTab] = useState<'pelanggan' | 'biaya'>('pelanggan');
+
+  // Unified state for managing Biaya (Tariff)
+  const [isBiayaFormOpen, setIsBiayaFormOpen] = useState(false);
+  const [editingBiaya, setEditingBiaya] = useState<BiayaTarif | null>(null);
+  const [biayaLayanan, setBiayaLayanan] = useState<'PLN' | 'PDAM' | 'WIFI'>("PLN");
+  const [biayaNamaPaket, setBiayaNamaPaket] = useState("");
+  const [biayaNominal, setBiayaNominal] = useState<number>(100000);
+  const [biayaErrors, setBiayaErrors] = useState<{ [key: string]: string }>({});
+
+  const handleOpenCreateBiaya = () => {
+    setEditingBiaya(null);
+    setBiayaLayanan("PLN");
+    setBiayaNamaPaket("");
+    setBiayaNominal(150000);
+    setBiayaErrors({});
+    setIsBiayaFormOpen(true);
+  };
+
+  const handleOpenEditBiaya = (b: BiayaTarif) => {
+    setEditingBiaya(b);
+    setBiayaLayanan(b.layanan);
+    setBiayaNamaPaket(b.namaPaket);
+    setBiayaNominal(b.biayaPerBulan);
+    setBiayaErrors({});
+    setIsBiayaFormOpen(true);
+  };
+
+  const validateBiayaForm = () => {
+    const tempErrors: { [key: string]: string } = {};
+    if (!biayaNamaPaket.trim()) tempErrors.namaPaket = "Nama paket/tarif bulanan wajib diisi";
+    if (biayaNominal <= 0) tempErrors.biayaPerBulan = "Besaran biaya bulanan harus lebih besar dari Rp 0";
+    setBiayaErrors(tempErrors);
+    return Object.keys(tempErrors).length === 0;
+  };
+
+  const handleSubmitBiaya = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateBiayaForm()) return;
+
+    const data: BiayaTarif = {
+      id: editingBiaya ? editingBiaya.id : `TRF-${Math.floor(100 + Math.random() * 900)}`,
+      layanan: biayaLayanan,
+      namaPaket: biayaNamaPaket.trim(),
+      biayaPerBulan: biayaNominal
+    };
+
+    if (editingBiaya) {
+      onUpdateBiaya(data);
+    } else {
+      onAddBiaya(data);
+    }
+
+    setIsBiayaFormOpen(false);
+  };
 
   // Auto-set matching tariff and due-date when service category changes
   useEffect(() => {
@@ -429,7 +494,33 @@ export default function MasterPelanggan({
   return (
     <div className="space-y-6">
       
-      {/* Header and Add Action */}
+      {/* Sub-tab Navigation */}
+      <div className="flex bg-slate-100 p-1 rounded-xl self-start w-fit border border-slate-200" id="pelanggan-subtab-navigation">
+        <button
+          onClick={() => setSubTab('pelanggan')}
+          className={`px-5 py-2 text-xs font-bold rounded-lg transition flex items-center gap-2 cursor-pointer ${
+            subTab === 'pelanggan'
+              ? 'bg-white text-indigo-700 shadow-xs'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Users size={14} /> Kelola Pelanggan ({pelangganList.length})
+        </button>
+        <button
+          onClick={() => setSubTab('biaya')}
+          className={`px-5 py-2 text-xs font-bold rounded-lg transition flex items-center gap-2 cursor-pointer ${
+            subTab === 'biaya'
+              ? 'bg-white text-indigo-700 shadow-xs'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <DollarSign size={14} /> Atur Paket & Tarif Bulanan ({biayaList.length})
+        </button>
+      </div>
+
+      {subTab === 'pelanggan' && (
+        <>
+          {/* Header and Add Action */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl">
@@ -913,14 +1004,23 @@ export default function MasterPelanggan({
                       const dt = p.idTanggal ? tanggalList.find(tg => tg.id === p.idTanggal) : tanggalList.find(tg => tg.layanan === p.layanan);
                       
                       return (
-                        <div className="space-y-0.5">
-                          <div className="font-bold text-slate-800 flex items-center gap-1">
+                        <div className="space-y-0.5 group/tariff relative">
+                          <div className="font-bold text-slate-800 flex items-center gap-1.5">
                             <span className="text-[11px] truncate block max-w-[130px]" title={t ? t.namaPaket : "Default"}>
                               {t ? t.namaPaket : "Default Listrik/Air"}
                             </span>
+                            {t && (
+                              <button 
+                                onClick={() => handleOpenEditBiaya(t)}
+                                className="opacity-0 group-hover/tariff:opacity-100 p-0.5 text-indigo-650 hover:bg-slate-100 rounded transition cursor-pointer"
+                                title="Edit nominal biaya paket ini langsung"
+                              >
+                                <Edit3 size={11} />
+                              </button>
+                            )}
                           </div>
                           <div className="font-mono text-[10px] text-slate-500 flex items-center gap-1 font-semibold flex-wrap">
-                            <span className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded text-[9px]">
+                            <span className="text-slate-705 bg-slate-100 px-1 py-0.5 rounded text-[9px] font-bold">
                               {t ? formatRupiah(t.biayaPerBulan) : "-"}
                             </span>
                             <span>•</span>
@@ -970,6 +1070,201 @@ export default function MasterPelanggan({
           </table>
         </div>
       </div>
+      </>
+    )}
+
+    {subTab === 'biaya' && (
+      <div className="space-y-6">
+        {/* Header Panel */}
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-indigo-50 text-indigo-650 rounded-xl">
+              <DollarSign size={24} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-800">Master Biaya & Tarif Tagihan Bulanan</h3>
+              <p className="text-xs text-slate-500">Atur nominal besaran biaya per bulan untuk penawaran paket layanan pelanggan secara kustom</p>
+            </div>
+          </div>
+          <button 
+            onClick={handleOpenCreateBiaya}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 font-medium text-xs text-white rounded-xl flex items-center gap-2 transition cursor-pointer font-semibold shadow-xs"
+            id="add-biaya-btn"
+          >
+            <Plus size={16} /> Tambah Paket Tarif Baru
+          </button>
+        </div>
+
+        {/* Tariffs List Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="biaya-list-grid">
+          {biayaList.map((b) => (
+            <div 
+              key={b.id}
+              className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col justify-between hover:scale-[1.01] hover:shadow-md transition duration-300 relative group overflow-hidden"
+            >
+              {/* Background Accent Lines */}
+              <div className={`absolute top-0 right-0 w-24 h-24 rounded-full opacity-5 -mr-6 -mt-6 ${
+                b.layanan === "PLN" ? "bg-amber-500" :
+                b.layanan === "PDAM" ? "bg-blue-500" :
+                "bg-purple-500"
+              }`}></div>
+
+              <div className="space-y-4 z-10 w-full">
+                {/* Badge & ID */}
+                <div className="flex justify-between items-center">
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-bold uppercase ${
+                    b.layanan === "PLN" ? "bg-amber-50 text-amber-600 border border-amber-100" :
+                    b.layanan === "PDAM" ? "bg-blue-50 text-blue-600 border border-blue-100" :
+                    "bg-purple-50 text-purple-600 border border-purple-100"
+                  }`}>
+                    {b.layanan === "PLN" && <Zap size={10} fill="currentColor" />}
+                    {b.layanan === "PDAM" && <Droplet size={10} />}
+                    {b.layanan === "WIFI" && <Wifi size={10} />}
+                    {b.layanan}
+                  </span>
+
+                  <span className="font-mono text-[9px] text-slate-400 font-bold uppercase">{b.id}</span>
+                </div>
+
+                {/* Package name details */}
+                <div className="space-y-1">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider font-mono flex items-center gap-1">
+                    <Tag size={12} /> Paket / Tarif
+                  </h4>
+                  <p className="text-sm font-bold text-slate-800 leading-tight pr-4">{b.namaPaket}</p>
+                </div>
+
+                {/* Price Tag line */}
+                <div className="border-t border-slate-50 pt-4 flex justify-between items-end">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-slate-450 uppercase font-mono tracking-wider font-semibold block">Besaran Bulanan</span>
+                    <p className="text-lg font-bold text-slate-800 font-mono tracking-tight">{formatRupiah(b.biayaPerBulan)}</p>
+                  </div>
+
+                  {/* Edit & Delete Action Block */}
+                  <div className="flex gap-1">
+                    <button 
+                      onClick={() => handleOpenEditBiaya(b)}
+                      className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 border border-slate-100 rounded-lg transition cursor-pointer"
+                      title="Ubah Tarif"
+                    >
+                      <Edit3 size={13} />
+                    </button>
+                    <button 
+                      onClick={() => {
+                        if (confirm(`Apakah Anda yakin ingin menghapus paket tarif "${b.namaPaket}"?`)) {
+                          onDeleteBiaya(b.id);
+                        }
+                      }}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-50 border border-slate-100 rounded-lg transition cursor-pointer"
+                      title="Hapus Tarif"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {biayaList.length === 0 && (
+            <div className="col-span-full border border-dashed border-slate-200 p-12 text-center rounded-2xl bg-white text-slate-400 text-xs">
+              Belum ada data paket tarif bulanan tercatat. Tambahkan tarif baru untuk memulai.
+            </div>
+          )}
+        </div>
+      </div>
+    )}
+
+    {/* Biaya Form CRUD Overlay Modal */}
+    {isBiayaFormOpen && (
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 transition-all" id="biaya-modal">
+        <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100">
+          <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-900 text-white">
+            <h4 className="text-xs font-bold font-mono tracking-wider uppercase">
+              {editingBiaya ? "Ubah Data Tarif Bulanan" : "Tambah Tarif Bulanan Baru"}
+            </h4>
+            <button onClick={() => setIsBiayaFormOpen(false)} className="text-slate-400 hover:text-white transition cursor-pointer">
+              <X size={18} />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmitBiaya} className="p-6 space-y-4">
+            
+            {/* Jenis Layanan */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-mono uppercase text-slate-500 font-semibold block">Jenis Layanan</label>
+              <div className="grid grid-cols-3 gap-2">
+                {(["PLN", "PDAM", "WIFI"] as const).map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => setBiayaLayanan(l)}
+                    className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition flex justify-center items-center gap-1.5 cursor-pointer ${
+                      biayaLayanan === l 
+                        ? "bg-slate-900 text-white border-slate-900 font-black shadow-xs" 
+                        : "bg-white text-slate-650 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    {l === "PLN" && <Zap size={12} />}
+                    {l === "PDAM" && <Droplet size={12} />}
+                    {l === "WIFI" && <Wifi size={12} />}
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Nama Paket */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-mono uppercase text-slate-500 font-semibold">Nama Paket / Tarif</label>
+              <input 
+                type="text"
+                placeholder="Contoh: Unlimited Fiber Home - 50 Mbps"
+                value={biayaNamaPaket}
+                onChange={(e) => setBiayaNamaPaket(e.target.value)}
+                className="w-full text-xs px-3 py-2 border border-slate-250 rounded-lg focus:outline-hidden focus:border-indigo-650 text-slate-700 bg-white"
+              />
+              {biayaErrors.namaPaket && <p className="text-[10px] text-rose-500 mt-1">{biayaErrors.namaPaket}</p>}
+            </div>
+
+            {/* Besaran tarif */}
+            <div className="space-y-1">
+              <label className="text-[11px] font-mono uppercase text-slate-500 font-semibold">Nominal Biaya per Bulan (Rupiah)</label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-mono font-bold">Rp</span>
+                <input 
+                  type="number"
+                  placeholder="Contoh: 275000"
+                  value={biayaNominal === 0 ? "" : biayaNominal}
+                  onChange={(e) => setBiayaNominal(parseInt(e.target.value) || 0)}
+                  className="w-full text-xs pl-8 pr-4 py-2 border border-slate-250 rounded-lg focus:outline-hidden focus:border-indigo-650 text-slate-750 font-bold font-mono bg-white"
+                />
+              </div>
+              {biayaErrors.biayaPerBulan && <p className="text-[10px] text-rose-500 mt-1">{biayaErrors.biayaPerBulan}</p>}
+            </div>
+
+            {/* Actions Footer */}
+            <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+              <button 
+                type="button"
+                onClick={() => setIsBiayaFormOpen(false)}
+                className="px-4 py-2 border border-slate-300 text-slate-650 hover:bg-slate-50 rounded-lg text-xs font-semibold cursor-pointer"
+              >
+                Batal
+              </button>
+              <button 
+                type="submit"
+                className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-lg shadow-indigo-600/10"
+              >
+                <Check size={14} /> Simpan Tarif
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    )}
 
     </div>
   );

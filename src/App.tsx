@@ -504,7 +504,7 @@ export default function App() {
                   }`}
                 >
                   <Users size={15} />
-                  Data Pelanggan (CRUD)
+                  Data Pelanggan & Tarif
                 </button>
 
                 <button
@@ -517,18 +517,6 @@ export default function App() {
                 >
                   <Calendar size={15} />
                   Tanggal Pembayaran
-                </button>
-
-                <button
-                  onClick={() => setActiveTab("biaya")}
-                  className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                    activeTab === "biaya"
-                      ? "bg-indigo-600 text-white shadow-xs font-bold"
-                      : "text-slate-400 hover:text-white hover:bg-slate-800"
-                  }`}
-                >
-                  <DollarSign size={15} />
-                  Biaya & Tarif Tagihan
                 </button>
               </div>
             )}
@@ -671,7 +659,7 @@ export default function App() {
                       activeTab === "pelanggan" ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-slate-850"
                     }`}
                   >
-                    <Users size={15} /> Data Pelanggan
+                    <Users size={15} /> Data Pelanggan & Tarif
                   </button>
 
                   <button
@@ -681,15 +669,6 @@ export default function App() {
                     }`}
                   >
                     <Calendar size={15} /> Tanggal Pembayaran
-                  </button>
-
-                  <button
-                    onClick={() => { setActiveTab("biaya"); setIsMobileMenuOpen(false); }}
-                    className={`py-2 px-3 text-xs font-bold rounded-lg text-left flex items-center gap-2.5 ${
-                      activeTab === "biaya" ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-slate-850"
-                    }`}
-                  >
-                    <DollarSign size={15} /> Biaya & Tarif Tagihan
                   </button>
                 </>
               )}
@@ -837,7 +816,7 @@ export default function App() {
                 />
               )}
 
-              {/* RENDER VIEW: DATA MASTER PELANGGAN */}
+              {/* RENDER VIEW: DATA MASTER PELANGGAN & TARIF (MERGED) */}
               {activeTab === "pelanggan" && (
                 <MasterPelanggan 
                   pelangganList={pelangganList}
@@ -846,6 +825,9 @@ export default function App() {
                   onAddPelanggan={handleAddPelanggan}
                   onUpdatePelanggan={handleUpdatePelanggan}
                   onDeletePelanggan={handleDeletePelanggan}
+                  onAddBiaya={handleAddBiaya}
+                  onUpdateBiaya={handleUpdateBiaya}
+                  onDeleteBiaya={handleDeleteBiaya}
                 />
               )}
 
@@ -856,16 +838,6 @@ export default function App() {
                   onAddTanggal={handleAddTanggal}
                   onUpdateTanggal={handleUpdateTanggal}
                   onDeleteTanggal={handleDeleteTanggal}
-                />
-              )}
-
-              {/* RENDER VIEW: DATA BIAYA & TARIFS */}
-              {activeTab === "biaya" && (
-                <MasterBiaya 
-                  biayaList={biayaList}
-                  onAddBiaya={handleAddBiaya}
-                  onUpdateBiaya={handleUpdateBiaya}
-                  onDeleteBiaya={handleDeleteBiaya}
                 />
               )}
 
