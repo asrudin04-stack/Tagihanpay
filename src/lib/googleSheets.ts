@@ -104,6 +104,11 @@ const apiRequest = async (url: string, method = "GET", body: any = null, token: 
 
   const response = await fetch(url, config);
   if (!response.ok) {
+    if (response.status === 401) {
+      // Clear token to force reauth
+      sessionStorage.removeItem("g_sheets_token");
+      throw new Error("Sesi Google Sheets Anda telah kedaluwarsa atau membutuhkan otorisasi ulang. Silakan putuskan akun dan login kembali.");
+    }
     const errText = await response.text();
     console.error(`API Error ${response.status}:`, errText);
     throw new Error(`Google API ${response.status}: ${response.statusText} (${errText})`);
@@ -290,18 +295,22 @@ export const importDataFromSpreadsheet = async (
     // Skip headers in row 0
     for (let i = 1; i < pelangganValues.length; i++) {
       const row = pelangganValues[i];
-      if (!row[0] || !row[1]) continue; // ID and name are mandatory
+      if (!row || row.length === 0) continue;
       
-      const layananStr = (row[4] || "PLN").trim().toUpperCase();
+      const idVal = row[0] ? String(row[0]).trim() : "";
+      const namaVal = row[1] ? String(row[1]).trim() : "";
+      if (!idVal || !namaVal) continue; // ID and name are mandatory
+      
+      const layananStr = row[4] ? String(row[4]).trim().toUpperCase() : "PLN";
       const validLayanan = ["PLN", "PDAM", "WIFI"].includes(layananStr) ? layananStr : "PLN";
 
       pelanggan.push({
-        id: row[0].trim(),
-        nama: row[1].trim(),
-        noTelp: row[2] ? row[2].trim() : "",
-        alamat: row[3] ? row[3].trim() : "",
+        id: idVal,
+        nama: namaVal,
+        noTelp: row[2] ? String(row[2]).trim() : "",
+        alamat: row[3] ? String(row[3]).trim() : "",
         layanan: validLayanan,
-        noMeter: row[5] ? row[5].trim() : ""
+        noMeter: row[5] ? String(row[5]).trim() : ""
       });
     }
   }
@@ -311,28 +320,35 @@ export const importDataFromSpreadsheet = async (
     // Skip headers in row 0
     for (let i = 1; i < transaksiValues.length; i++) {
       const row = transaksiValues[i];
-      if (!row[0] || !row[1] || !row[2]) continue; // ID, Client ID, Client Name are mandatory
+      if (!row || row.length === 0) continue;
 
-      const layananStr = (row[3] || "PLN").trim().toUpperCase();
+      const idVal = row[0] ? String(row[0]).trim() : "";
+      const idPelangganVal = row[1] ? String(row[1]).trim() : "";
+      const namaPelangganVal = row[2] ? String(row[2]).trim() : "";
+      if (!idVal || !idPelangganVal || !namaPelangganVal) continue; // ID, Client ID, Client Name are mandatory
+
+      const layananStr = row[3] ? String(row[3]).trim().toUpperCase() : "PLN";
       const validLayanan = ["PLN", "PDAM", "WIFI"].includes(layananStr) ? layananStr : "PLN";
       
-      const metodeStr = (row[6] || "Tunai").trim();
-      const validMetode = ["Tunai", "Transfer"].includes(metodeStr) ? metodeStr : "Tunai";
+      const metodeStr = row[6] ? String(row[6]).trim() : "Tunai";
+      // Capitalize first letter to match "Tunai" | "Transfer"
+      const capitalizedMetode = metodeStr.charAt(0).toUpperCase() + metodeStr.slice(1).toLowerCase();
+      const validMetode = ["Tunai", "Transfer"].includes(capitalizedMetode) ? capitalizedMetode : "Tunai";
 
       const jumlahStr = String(row[5]).replace(/[^0-9.-]/g, "");
       const finalJumlah = Number(jumlahStr) || 0;
 
       transaksi.push({
-        id: row[0].trim(),
-        idPelanggan: row[1].trim(),
-        namaPelanggan: row[2].trim(),
+        id: idVal,
+        idPelanggan: idPelangganVal,
+        namaPelanggan: namaPelangganVal,
         layanan: validLayanan,
-        periode: row[4] ? row[4].trim() : "2026-06",
+        periode: row[4] ? String(row[4]).trim() : "2026-06",
         jumlahBayar: finalJumlah,
         metodePembayaran: validMetode,
-        tanggalBayar: row[7] ? row[7].trim() : new Date().toISOString().split("T")[0],
-        keterangan: row[8] ? row[8].trim() : "",
-        noReff: row[9] ? row[9].trim() : ""
+        tanggalBayar: row[7] ? String(row[7]).trim() : new Date().toISOString().split("T")[0],
+        keterangan: row[8] ? String(row[8]).trim() : "",
+        noReff: row[9] ? String(row[9]).trim() : ""
       });
     }
   }
