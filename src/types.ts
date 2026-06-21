@@ -10,6 +10,8 @@ export interface Pelanggan {
   alamat: string;
   layanan: 'PLN' | 'PDAM' | 'WIFI';
   noMeter: string; // Meter ID or Customer WiFi Account ID
+  idTarif?: string; // ID of selected tariff package
+  idTanggal?: string; // ID of selected due date schedule
 }
 
 export interface TanggalPembayaran {

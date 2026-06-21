@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { 
   Users, 
   Plus, 
@@ -23,10 +23,12 @@ import {
   AlertCircle,
   FileText
 } from "lucide-react";
-import { Pelanggan } from "../types";
+import { Pelanggan, BiayaTarif, TanggalPembayaran, formatRupiah } from "../types";
 
 interface MasterPelangganProps {
   pelangganList: Pelanggan[];
+  biayaList: BiayaTarif[];
+  tanggalList: TanggalPembayaran[];
   onAddPelanggan: (pelanggan: Pelanggan | Pelanggan[]) => void;
   onUpdatePelanggan: (pelanggan: Pelanggan) => void;
   onDeletePelanggan: (id: string) => void;
@@ -34,6 +36,8 @@ interface MasterPelangganProps {
 
 export default function MasterPelanggan({
   pelangganList,
+  biayaList,
+  tanggalList,
   onAddPelanggan,
   onUpdatePelanggan,
   onDeletePelanggan
@@ -52,9 +56,36 @@ export default function MasterPelanggan({
   const [alamat, setAlamat] = useState("");
   const [layanan, setLayanan] = useState<'PLN' | 'PDAM' | 'WIFI'>("PLN");
   const [noMeter, setNoMeter] = useState("");
+  const [idTarif, setIdTarif] = useState("");
+  const [idTanggal, setIdTanggal] = useState("");
 
   // Error validations
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  // Auto-set matching tariff and due-date when service category changes
+  useEffect(() => {
+    // Check available tariffs for the chosen category
+    const matchingTariffs = biayaList.filter(b => b.layanan === layanan);
+    if (matchingTariffs.length > 0) {
+      const curTariff = biayaList.find(b => b.id === idTarif);
+      if (!curTariff || curTariff.layanan !== layanan) {
+        setIdTarif(matchingTariffs[0].id);
+      }
+    } else {
+      setIdTarif("");
+    }
+
+    // Check available due dates for the chosen category
+    const matchingDates = tanggalList.filter(t => t.layanan === layanan);
+    if (matchingDates.length > 0) {
+      const curDate = tanggalList.find(t => t.id === idTanggal);
+      if (!curDate || curDate.layanan !== layanan) {
+        setIdTanggal(matchingDates[0].id);
+      }
+    } else {
+      setIdTanggal("");
+    }
+  }, [layanan, biayaList, tanggalList]);
 
   // --- IMPORT STATE & HELPERS FOR EXCEL/CSV ---
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -309,6 +340,8 @@ export default function MasterPelanggan({
     setAlamat("");
     setLayanan("PLN");
     setNoMeter("");
+    setIdTarif("");
+    setIdTanggal("");
     setErrors({});
     setIsFormOpen(true);
   };
@@ -320,6 +353,8 @@ export default function MasterPelanggan({
     setAlamat(p.alamat);
     setLayanan(p.layanan);
     setNoMeter(p.noMeter);
+    setIdTarif(p.idTarif || "");
+    setIdTanggal(p.idTanggal || "");
     setErrors({});
     setIsFormOpen(true);
   };
@@ -355,7 +390,9 @@ export default function MasterPelanggan({
         noTelp: noTelp.trim(),
         alamat: alamat.trim(),
         layanan,
-        noMeter: noMeter.trim()
+        noMeter: noMeter.trim(),
+        idTarif: idTarif || undefined,
+        idTanggal: idTanggal || undefined
       });
     } else {
       // Create action
@@ -366,7 +403,9 @@ export default function MasterPelanggan({
         noTelp: noTelp.trim(),
         alamat: alamat.trim(),
         layanan,
-        noMeter: noMeter.trim()
+        noMeter: noMeter.trim(),
+        idTarif: idTarif || undefined,
+        idTanggal: idTanggal || undefined
       });
     }
 
@@ -548,6 +587,54 @@ export default function MasterPelanggan({
                   {errors.noMeter && <p className="text-[10px] text-rose-500 mt-1">{errors.noMeter}</p>}
                 </div>
 
+              </div>
+
+              {/* Profil Tagihan (Tarif & Jatuh Tempo) Section */}
+              <div className="pt-3.5 border-t border-slate-100 space-y-3" id="profil-tagihan-form-section">
+                <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs">
+                  <span className="p-1 px-1.5 bg-indigo-50 text-indigo-700 text-[10px] font-mono rounded-md shrink-0">PROFIL TAGIHAN</span>
+                  <span className="text-[11px] text-slate-500 font-medium truncate">Atur kustom tarif & tanggal tagihan</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Pilihan Tarif */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-mono uppercase text-slate-500 font-semibold block">Paket Tarif / Biaya</label>
+                    <select
+                      value={idTarif}
+                      onChange={(e) => setIdTarif(e.target.value)}
+                      className="w-full text-xs p-2 border border-slate-250 rounded-lg focus:outline-hidden focus:border-indigo-650 text-slate-750 bg-white font-medium"
+                    >
+                      <option value="">-- Gunakan Tarif Standar --</option>
+                      {biayaList
+                        .filter((b) => b.layanan === layanan)
+                        .map((b) => (
+                          <option key={b.id} value={b.id}>
+                            {b.namaPaket} ({formatRupiah(b.biayaPerBulan)})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  {/* Pilihan Tanggal Jatuh Tempo */}
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-mono uppercase text-slate-500 font-semibold block">Jadwal Jatuh Tempo</label>
+                    <select
+                      value={idTanggal}
+                      onChange={(e) => setIdTanggal(e.target.value)}
+                      className="w-full text-xs p-2 border border-slate-250 rounded-lg focus:outline-hidden focus:border-indigo-650 text-slate-750 bg-white font-medium"
+                    >
+                      <option value="">-- Gunakan Jatuh Tempo Standar --</option>
+                      {tanggalList
+                        .filter((t) => t.layanan === layanan)
+                        .map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.namaJadwal} (Tgl {t.tanggalJatuhTempo})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
               </div>
 
               {/* Form Buttons */}
@@ -757,13 +844,14 @@ export default function MasterPelanggan({
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden" id="pelanggan-data-container">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left text-slate-600">
-            <thead>
+             <thead>
               <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-mono uppercase tracking-wider text-slate-500">
                 <th className="p-4 pl-6 font-bold">INFO PELANGGAN</th>
                 <th className="p-4 font-bold">KONTAK</th>
                 <th className="p-4 font-bold">ALAMAT</th>
                 <th className="p-4 font-bold">LAYANAN UTAMA</th>
                 <th className="p-4 font-bold">NOMOR / REK METERAN</th>
+                <th className="p-4 font-bold">PROFIL TAGIHAN</th>
                 <th className="p-4 pr-6 text-right font-bold">AKSI</th>
               </tr>
             </thead>
@@ -818,6 +906,33 @@ export default function MasterPelanggan({
                     {p.noMeter}
                   </td>
 
+                  {/* profil tagihan */}
+                  <td className="p-4 leading-normal">
+                    {(() => {
+                      const t = p.idTarif ? biayaList.find(b => b.id === p.idTarif) : biayaList.find(b => b.layanan === p.layanan);
+                      const dt = p.idTanggal ? tanggalList.find(tg => tg.id === p.idTanggal) : tanggalList.find(tg => tg.layanan === p.layanan);
+                      
+                      return (
+                        <div className="space-y-0.5">
+                          <div className="font-bold text-slate-800 flex items-center gap-1">
+                            <span className="text-[11px] truncate block max-w-[130px]" title={t ? t.namaPaket : "Default"}>
+                              {t ? t.namaPaket : "Default Listrik/Air"}
+                            </span>
+                          </div>
+                          <div className="font-mono text-[10px] text-slate-500 flex items-center gap-1 font-semibold flex-wrap">
+                            <span className="text-slate-700 bg-slate-100 px-1 py-0.5 rounded text-[9px]">
+                              {t ? formatRupiah(t.biayaPerBulan) : "-"}
+                            </span>
+                            <span>•</span>
+                            <span className="text-rose-600 font-bold bg-rose-50 px-1 py-0.5 rounded text-[9px]">
+                              Tgl {dt ? dt.tanggalJatuhTempo : "15"}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </td>
+
                   {/* aksi */}
                   <td className="p-4 pr-6 text-right">
                     <div className="flex justify-end gap-1.5">
@@ -846,7 +961,7 @@ export default function MasterPelanggan({
 
               {filteredList.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-12 text-center text-slate-400 text-xs">
+                  <td colSpan={7} className="p-12 text-center text-slate-400 text-xs">
                     Pelanggan tidak ditemukan. Masukkan kata kunci lain atau daftarkan pelanggan baru.
                   </td>
                 </tr>

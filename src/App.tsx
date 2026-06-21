@@ -841,6 +841,8 @@ export default function App() {
               {activeTab === "pelanggan" && (
                 <MasterPelanggan 
                   pelangganList={pelangganList}
+                  biayaList={biayaList}
+                  tanggalList={tanggalList}
                   onAddPelanggan={handleAddPelanggan}
                   onUpdatePelanggan={handleUpdatePelanggan}
                   onDeletePelanggan={handleDeletePelanggan}

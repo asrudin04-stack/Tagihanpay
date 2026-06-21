@@ -146,7 +146,7 @@ export default function TransaksiView({
           
           let rate = 0;
           if (customer) {
-            const standardRateObj = biayaList.find(b => b.layanan === customer.layanan);
+            const standardRateObj = customer.idTarif ? biayaList.find(b => b.id === customer.idTarif) : biayaList.find(b => b.layanan === customer.layanan);
             rate = standardRateObj ? standardRateObj.biayaPerBulan : 120000;
           }
           const jBayar = Number(item.jumlahBayar || item.jumlah_bayar || item.nominal || rate);
@@ -231,7 +231,7 @@ export default function TransaksiView({
           
           let rate = 0;
           if (customer) {
-            const standardRateObj = biayaList.find(b => b.layanan === customer.layanan);
+            const standardRateObj = customer.idTarif ? biayaList.find(b => b.id === customer.idTarif) : biayaList.find(b => b.layanan === customer.layanan);
             rate = standardRateObj ? standardRateObj.biayaPerBulan : 120000;
           }
 
@@ -388,7 +388,7 @@ export default function TransaksiView({
   // Autofill standard cost of chosen client's package
   useEffect(() => {
     if (selectedCustomerInfo) {
-      const standardRate = biayaList.find((b) => b.layanan === selectedCustomerInfo.layanan);
+      const standardRate = selectedCustomerInfo.idTarif ? biayaList.find((b) => b.id === selectedCustomerInfo.idTarif) : biayaList.find((b) => b.layanan === selectedCustomerInfo.layanan);
       if (standardRate) {
         setJumlahBayar(standardRate.biayaPerBulan);
       } else {
@@ -463,7 +463,7 @@ export default function TransaksiView({
 
     pelangganList.forEach((p) => {
       // Find matching standard tarif
-      const rateObj = biayaList.find((b) => b.layanan === p.layanan);
+      const rateObj = p.idTarif ? biayaList.find((b) => b.id === p.idTarif) : biayaList.find((b) => b.layanan === p.layanan);
       const nominal = rateObj ? rateObj.biayaPerBulan : 120000;
 
       activePeriods.forEach((period) => {

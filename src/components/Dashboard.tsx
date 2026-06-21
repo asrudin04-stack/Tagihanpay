@@ -82,7 +82,7 @@ export default function Dashboard({
     // For each pelanggan, check if they paid for activePeriods
     pelangganList.forEach(p => {
       // Find standard tariff for client's service
-      const rateObj = biayaList.find(b => b.layanan === p.layanan);
+      const rateObj = p.idTarif ? biayaList.find(b => b.id === p.idTarif) : biayaList.find(b => b.layanan === p.layanan);
       const perkiraanBiaya = rateObj ? rateObj.biayaPerBulan : 100000;
 
       activePeriods.forEach(period => {
@@ -174,7 +174,7 @@ export default function Dashboard({
 
     pelangganList.forEach((p) => {
       // Find matching due date schedule for the service
-      const schedule = tanggalList.find((t) => t.layanan === p.layanan);
+      const schedule = p.idTanggal ? tanggalList.find((t) => t.id === p.idTanggal) : tanggalList.find((t) => t.layanan === p.layanan);
       if (!schedule) return;
 
       const dueDay = schedule.tanggalJatuhTempo;
