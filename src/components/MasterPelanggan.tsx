@@ -182,6 +182,8 @@ export default function MasterPelanggan({
             alamat: String(item.alamat || "").trim(),
             layanan: ['PLN', 'PDAM', 'WIFI'].includes(l) ? l : 'PLN',
             noMeter: String(item.noMeter || item.no_meter || item.id_meter || item.meter || "").trim(),
+            idTarif: String(item.idTarif || item.id_tarif || item.tarif || item.paket || "").trim() || undefined,
+            idTanggal: String(item.idTanggal || item.id_tanggal || item.tanggal || item.jadwal || item.tempo || "").trim() || undefined,
           };
         });
         const validList = sanitized.filter(x => x.nama !== "");
@@ -200,7 +202,7 @@ export default function MasterPelanggan({
           return;
         }
         
-        // Find header row or assume: nama,noTelp,alamat,layanan,noMeter
+        // Find header row or assume: nama,noTelp,alamat,layanan,noMeter,idTarif,idTanggal
         const headers = lines[0].toLowerCase().split(/[;,]/).map(h => h.trim());
         const dataRows = lines.slice(1);
         
@@ -240,6 +242,8 @@ export default function MasterPelanggan({
           let alamatVal = "";
           let layananVal: 'PLN' | 'PDAM' | 'WIFI' = 'PLN';
           let noMeterVal = "";
+          let idTarifVal = "";
+          let idTanggalVal = "";
 
           const getIndexByHeader = (name: string, fallbackIdx: number) => {
             const index = headers.findIndex(h => h.includes(name));
@@ -251,6 +255,8 @@ export default function MasterPelanggan({
           const alamatIdx = getIndexByHeader("alamat", 2);
           const layananIdx = getIndexByHeader("layan", 3);
           const meterIdx = getIndexByHeader("meter", 4);
+          const tarifIdx = getIndexByHeader("tarif", 5);
+          const tanggalIdx = getIndexByHeader("tanggal", 6);
 
           namaVal = cleanedCols[namaIdx] || "";
           noTelpVal = cleanedCols[telpIdx] || cleanedCols[1] || "";
@@ -260,6 +266,8 @@ export default function MasterPelanggan({
           layananVal = ['PLN', 'PDAM', 'WIFI'].includes(rawLayanan) ? (rawLayanan as 'PLN' | 'PDAM' | 'WIFI') : 'PLN';
           
           noMeterVal = cleanedCols[meterIdx] || cleanedCols[4] || "";
+          idTarifVal = cleanedCols[tarifIdx] || cleanedCols[5] || "";
+          idTanggalVal = cleanedCols[tanggalIdx] || cleanedCols[6] || "";
 
           if (namaVal) {
             results.push({
@@ -267,7 +275,9 @@ export default function MasterPelanggan({
               noTelp: noTelpVal,
               alamat: alamatVal,
               layanan: layananVal,
-              noMeter: noMeterVal
+              noMeter: noMeterVal,
+              idTarif: idTarifVal || undefined,
+              idTanggal: idTanggalVal || undefined,
             });
           }
         });
@@ -346,7 +356,9 @@ export default function MasterPelanggan({
         noTelp: row.noTelp,
         alamat: row.alamat,
         layanan: row.layanan,
-        noMeter: row.noMeter
+        noMeter: row.noMeter,
+        idTarif: row.idTarif || undefined,
+        idTanggal: row.idTanggal || undefined
       });
     });
 
@@ -365,8 +377,8 @@ export default function MasterPelanggan({
   };
 
   const downloadTemplateCustomerCSV = () => {
-    const headers = "nama,noTelp,alamat,layanan,noMeter\n";
-    const sample = "Joko Susilo,081299998888,Jl. Anggrek No. 10,PLN,53221199028\nSusi Susanti,085522221111,Perum Permai Blok D-2,WIFI,WIFI-IND-9092\nPak Amat,089911110000,Desa Makmur RT 01,PDAM,PAM-887711\n";
+    const headers = "nama,noTelp,alamat,layanan,noMeter,idTarif,idTanggal\n";
+    const sample = "Joko Susilo,081299998888,Jl. Anggrek No. 10,PLN,53221199028,TRF-001,TGL-001\nSusi Susanti,085522221111,Perum Permai Blok D-2,WIFI,WIFI-IND-9092,TRF-005,TGL-003\nPak Amat,089911110000,Desa Makmur RT 01,PDAM,PAM-887711,TRF-003,TGL-002\n";
     const blob = new Blob([headers + sample], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -880,7 +892,9 @@ export default function MasterPelanggan({
                           <th className="p-2 pl-3">Nama</th>
                           <th className="p-2">Kontak</th>
                           <th className="p-2">Layanan</th>
-                          <th className="p-2 pr-3">No ID Meter</th>
+                          <th className="p-2">No ID Meter</th>
+                          <th className="p-2">ID Tarif</th>
+                          <th className="p-2 pr-3">ID Jatuh Tempo</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-slate-650 bg-white">
@@ -897,7 +911,9 @@ export default function MasterPelanggan({
                                 {row.layanan}
                               </span>
                             </td>
-                            <td className="p-2 pr-3 font-mono font-semibold">{row.noMeter}</td>
+                            <td className="p-2 font-mono font-semibold">{row.noMeter}</td>
+                            <td className="p-2 font-mono text-slate-550 font-medium">{row.idTarif || <span className="text-slate-350 italic">Default</span>}</td>
+                            <td className="p-2 pr-3 font-mono text-slate-550 font-medium">{row.idTanggal || <span className="text-slate-350 italic">Default</span>}</td>
                           </tr>
                         ))}
                       </tbody>
