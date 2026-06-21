@@ -432,36 +432,6 @@ export default function App() {
               </button>
             </form>
 
-            {/* Separator */}
-            <div className="relative flex py-2 items-center">
-              <div className="flex-grow border-t border-slate-200"></div>
-              <span className="flex-shrink mx-3 text-[10px] font-bold text-slate-400 font-mono">TOMBOL BYPASS CEPAT</span>
-              <div className="flex-grow border-t border-slate-200"></div>
-            </div>
-
-            {/* Preset Bypass Access Buttons */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => handleBypassLogin("administrator")}
-                className="p-3 bg-indigo-50/70 hover:bg-indigo-100 border border-indigo-100 rounded-xl text-center group transition cursor-pointer flex flex-col items-center justify-center gap-1"
-              >
-                <Shield size={16} className="text-indigo-600 group-hover:scale-110 transition" />
-                <span className="text-[10px] font-extrabold text-indigo-950 block leading-tight">ADMINISTRATOR</span>
-                <span className="text-[8px] font-semibold text-indigo-600/75 block font-mono">Akses Semua Fitur</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleBypassLogin("kasir")}
-                className="p-3 bg-amber-50/70 hover:bg-amber-100 border border-amber-100 rounded-xl text-center group transition cursor-pointer flex flex-col items-center justify-center gap-1"
-              >
-                <Users size={16} className="text-amber-600 group-hover:scale-110 transition" />
-                <span className="text-[10px] font-extrabold text-amber-950 block leading-tight">KASIR LOKET</span>
-                <span className="text-[8px] font-semibold text-amber-600/75 block font-mono">Akses Pembayaran</span>
-              </button>
-            </div>
-
           </div>
 
           {/* Help Banner Details */}
