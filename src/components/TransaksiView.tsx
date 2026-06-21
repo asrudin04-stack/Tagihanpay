@@ -116,6 +116,12 @@ export default function TransaksiView({
   const [historySearch, setHistorySearch] = useState("");
   const [historyLayanan, setHistoryLayanan] = useState("SEMUA");
 
+  // --- CUSTOMER SEARCH IN FORM ---
+  const [customerSearchText, setCustomerSearchText] = useState("");
+
+  // --- ARREARS SEARCH IN UNPAID PAGE ---
+  const [arrearsSearch, setArrearsSearch] = useState("");
+
   // --- STATE FOR COLLECTIVE PAYMENT IMPORT ---
   const [dragActiveKolektif, setDragActiveKolektif] = useState(false);
   const [rawTextKolektif, setRawTextKolektif] = useState("");
@@ -506,6 +512,30 @@ export default function TransaksiView({
     return list;
   }, [pelangganList, transaksiList, biayaList]);
 
+  // Filtered customer list for the Dropdown selector
+  const filteredPelangganList = useMemo(() => {
+    if (!customerSearchText.trim()) return pelangganList;
+    const query = customerSearchText.toLowerCase();
+    return pelangganList.filter(p => 
+      p.nama.toLowerCase().includes(query) ||
+      p.id.toLowerCase().includes(query) ||
+      (p.noTelp && p.noTelp.toLowerCase().includes(query)) ||
+      (p.noMeter && p.noMeter.toLowerCase().includes(query))
+    );
+  }, [pelangganList, customerSearchText]);
+
+  // Filtered unpaid arrears list based on Search terms
+  const filteredArrearsList = useMemo(() => {
+    if (!arrearsSearch.trim()) return arrearsList;
+    const query = arrearsSearch.toLowerCase();
+    return arrearsList.filter(item => 
+      item.pelanggan.nama.toLowerCase().includes(query) ||
+      item.pelanggan.id.toLowerCase().includes(query) ||
+      (item.pelanggan.noTelp && item.pelanggan.noTelp.toLowerCase().includes(query)) ||
+      (item.pelanggan.noMeter && item.pelanggan.noMeter.toLowerCase().includes(query))
+    );
+  }, [arrearsList, arrearsSearch]);
+
   // Handle direct rapid payment from arrears list
   const handleArrearsPayNow = (p: Pelanggan, periodLabel: string) => {
     setSelectedCustomerId(p.id);
@@ -613,18 +643,48 @@ export default function TransaksiView({
 
             <form onSubmit={handlePaymentSubmit} className="space-y-4">
               
-              {/* Customer Selector dropdown */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-mono uppercase text-slate-500 font-semibold block">PILIH PELANGGAN</label>
+              {/* Customer Selector dropdown with Name Search Filter */}
+              <div className="space-y-1.5 bg-slate-50/50 p-3 rounded-xl border border-slate-100">
+                <label className="text-[11px] font-mono uppercase text-slate-500 font-semibold flex items-center justify-between">
+                  <span>PILIH PELANGGAN</span>
+                  {customerSearchText && (
+                    <button 
+                      type="button" 
+                      onClick={() => setCustomerSearchText("")} 
+                      className="text-[10px] text-indigo-600 hover:underline font-semibold"
+                    >
+                      Reset Pencarian
+                    </button>
+                  )}
+                </label>
+                
+                {/* Real-time Name search input */}
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-slate-400">
+                    <Search size={14} />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Cari Nama / No ID pelanggan..."
+                    value={customerSearchText}
+                    onChange={(e) => setCustomerSearchText(e.target.value)}
+                    className="w-full text-xs pl-9 pr-3 py-2 border border-slate-200 rounded-lg focus:outline-hidden focus:border-indigo-600 focus:bg-white text-slate-800 bg-white shadow-xs"
+                  />
+                </div>
+
                 <select
                   value={selectedCustomerId}
                   onChange={(e) => setSelectedCustomerId(e.target.value)}
-                  className="w-full text-xs p-2.5 border border-slate-250 rounded-lg focus:outline-hidden focus:border-indigo-650 text-slate-850 font-medium bg-white"
+                  className="w-full text-xs p-2.5 border border-slate-250 rounded-lg focus:outline-hidden focus:border-indigo-650 text-slate-850 font-medium bg-white cursor-pointer mt-1"
                 >
-                  <option value="">-- Cari / Pilih Pelanggan --</option>
-                  {pelangganList.map((p) => (
+                  <option value="">
+                    {filteredPelangganList.length === 0 
+                      ? "-- Pelanggan Tidak Ditemukan --" 
+                      : `-- Pilih dari ${filteredPelangganList.length} Pelanggan --`}
+                  </option>
+                  {filteredPelangganList.map((p) => (
                     <option key={p.id} value={p.id}>
-                      [{p.id}] {p.nama} - {p.layanan} ({p.noMeter})
+                      {p.nama} ({p.layanan} - {p.id})
                     </option>
                   ))}
                 </select>
@@ -981,7 +1041,7 @@ export default function TransaksiView({
                 </tbody>
               </table>
             </div>
-          </div>the
+          </div>
         </div>
       )}
 
@@ -1004,6 +1064,29 @@ export default function TransaksiView({
             </div>
           </div>
 
+          {/* Real-time search/filter for Arrears/Unpaid List */}
+          <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-xs flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
+              <input 
+                type="text"
+                placeholder="Cari Tunggakan berdasarkan Nama Pelanggan, ID Pelanggan, No ID Meter..."
+                value={arrearsSearch}
+                onChange={(e) => setArrearsSearch(e.target.value)}
+                className="pl-9 pr-4 py-1.5 w-full bg-slate-50 text-xs border border-slate-250 rounded-lg focus:outline-hidden focus:border-indigo-600 text-slate-705"
+              />
+            </div>
+            {arrearsSearch && (
+              <button
+                type="button"
+                onClick={() => setArrearsSearch("")}
+                className="text-xs text-slate-500 hover:text-indigo-600 font-medium shrink-0"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left text-slate-600">
@@ -1019,7 +1102,7 @@ export default function TransaksiView({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs animate-fadeIn">
-                  {arrearsList.map((item) => (
+                  {filteredArrearsList.map((item) => (
                     <tr key={item.idKey} className="hover:bg-rose-50/20 transition duration-300">
                       
                       {/* Customer Name */}
@@ -1081,6 +1164,14 @@ export default function TransaksiView({
                     <tr>
                       <td colSpan={7} className="p-12 text-center text-emerald-600 font-medium text-xs bg-emerald-50/10">
                         Luar biasa! Tidak ada tagihan menunggak untuk seluruh pelanggan di periode ini.
+                      </td>
+                    </tr>
+                  )}
+
+                  {arrearsList.length > 0 && filteredArrearsList.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="p-12 text-center text-slate-400 text-xs italic">
+                        Tidak ada data tunggakan yang cocok dengan pencarian "{arrearsSearch}"
                       </td>
                     </tr>
                   )}
