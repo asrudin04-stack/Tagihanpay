@@ -25,7 +25,10 @@ import {
   Zap,
   Droplet,
   Wifi,
-  BookmarkCheck
+  BookmarkCheck,
+  RotateCcw,
+  Trash2,
+  AlertTriangle
 } from "lucide-react";
 
 import { 
@@ -62,6 +65,43 @@ export default function App() {
 
   // Quick routing trigger state (e.g. paying from arrears lists)
   const [quickPaymentCustomerId, setQuickPaymentCustomerId] = useState<string | undefined>(undefined);
+
+  // System State Recovery and Reset triggers
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+
+  const handleResetToDefault = () => {
+    setPelangganList(INITIAL_PELANGGAN);
+    localStorage.setItem("pembayaran_pelanggan", JSON.stringify(INITIAL_PELANGGAN));
+
+    setTanggalList(INITIAL_TANGGAL_PEMBAYARAN);
+    localStorage.setItem("pembayaran_tanggal", JSON.stringify(INITIAL_TANGGAL_PEMBAYARAN));
+
+    setBiayaList(INITIAL_BIAYA_TARIF);
+    localStorage.setItem("pembayaran_biaya", JSON.stringify(INITIAL_BIAYA_TARIF));
+
+    setTransaksiList(INITIAL_TRANSAKSI);
+    localStorage.setItem("pembayaran_transaksi", JSON.stringify(INITIAL_TRANSAKSI));
+
+    setIsResetModalOpen(false);
+    setActiveTab("dashboard");
+  };
+
+  const handleClearAllData = () => {
+    setPelangganList([]);
+    localStorage.setItem("pembayaran_pelanggan", JSON.stringify([]));
+
+    setTanggalList([]);
+    localStorage.setItem("pembayaran_tanggal", JSON.stringify([]));
+
+    setBiayaList([]);
+    localStorage.setItem("pembayaran_biaya", JSON.stringify([]));
+
+    setTransaksiList([]);
+    localStorage.setItem("pembayaran_transaksi", JSON.stringify([]));
+
+    setIsResetModalOpen(false);
+    setActiveTab("dashboard");
+  };
 
   // Load initial dataset from localStorage or fallback to defaults
   useEffect(() => {
@@ -286,6 +326,21 @@ export default function App() {
               </button>
             </div>
 
+            {/* Danger Zone Utilities */}
+            <div className="space-y-1.5 pt-2 border-t border-slate-800/60">
+              <span className="px-3 text-[9.5px] uppercase font-mono tracking-wider text-rose-500 font-bold flex items-center gap-1">
+                <AlertTriangle size={11} className="text-rose-500 animate-pulse" /> Danger Zone System
+              </span>
+              
+              <button
+                onClick={() => setIsResetModalOpen(true)}
+                className="w-full flex items-center gap-3 px-3 py-2 text-xs font-bold rounded-lg text-rose-450 hover:text-rose-300 hover:bg-rose-955/20 transition cursor-pointer text-left"
+              >
+                <RotateCcw size={15} className="text-rose-500" />
+                Hapus & Reset Data
+              </button>
+            </div>
+
           </div>
 
         </div>
@@ -381,6 +436,13 @@ export default function App() {
                 }`}
               >
                 <FileText size={15} /> Menu Laporan Lengkap
+              </button>
+
+              <button
+                onClick={() => { setIsResetModalOpen(true); setIsMobileMenuOpen(false); }}
+                className="py-2 px-3 text-xs font-bold rounded-lg text-left flex items-center gap-2.5 text-rose-400 hover:bg-rose-955/20 border-t border-slate-800/80 pt-3.5 mt-1"
+              >
+                <RotateCcw size={15} className="text-rose-500 animate-pulse" /> Reset & Hapus Data
               </button>
 
             </div>
@@ -506,6 +568,104 @@ export default function App() {
         </div>
 
       </main>
+
+      {/* ==========================================
+          SYSTEM RESET CONFIRMATION MODAL OVERLAY
+          ========================================== */}
+      {isResetModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-[100] p-4 transition-all animate-fadeIn font-sans" id="delete-system-modal">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl border border-rose-100 overflow-hidden transform scale-100 transition-all flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-4.5 bg-rose-950 text-white flex justify-between items-center border-b border-rose-900 shrink-0">
+              <div className="flex items-center gap-2.5 text-rose-450">
+                <AlertTriangle size={20} className="text-rose-500 animate-bounce" />
+                <h4 className="text-xs font-black font-mono tracking-wider uppercase">
+                  Konfirmasi Tindakan Berbahaya
+                </h4>
+              </div>
+              <button 
+                onClick={() => setIsResetModalOpen(false)} 
+                className="text-rose-350 hover:text-white transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              <div className="space-y-2">
+                <h3 className="text-base font-bold text-slate-800">
+                  Anda akan menghapus/meriset data aplikasi TagihanPay
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Tindakan ini akan mempengaruhi database lokal yang terdaftar pada browser saat ini. Perubahan ini bersifat instan dan permanen.
+                </p>
+              </div>
+
+              {/* Scope warning list */}
+              <div className="bg-rose-50 border border-rose-100 p-3.5 rounded-xl text-rose-950 text-xs space-y-1.5">
+                <p className="font-bold">Data yang akan terpengaruh:</p>
+                <ul className="list-disc pl-5 font-mono text-[10.5px] text-rose-800 space-y-0.5">
+                  <li>Data Master Pelanggan (PLN, PDAM, WIFI)</li>
+                  <li>Konfigurasi Jatuh Tempo Tanggal Pembayaran</li>
+                  <li>Rincian Biaya Tarif Standard / Rumah Tangga</li>
+                  <li>Semua Riwayat Transaksi Lunas / Cetak Kwitansi</li>
+                </ul>
+              </div>
+
+              {/* Options selection description */}
+              <div className="grid grid-cols-1 gap-3 pt-1">
+                
+                {/* Method 1: Back to Default seed */}
+                <button
+                  onClick={handleResetToDefault}
+                  className="p-3.5 border border-slate-200 hover:border-indigo-350 bg-slate-50 hover:bg-slate-100 text-left rounded-xl transition flex gap-3 items-start group cursor-pointer"
+                >
+                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg group-hover:bg-indigo-100 shrink-0">
+                    <RotateCcw size={16} />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-slate-850">Metode A: Reset ke Data Demo (Rekomendasi)</h5>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Mengembalikan database ke rincian pelanggan standard, jadwal tempo, & riwayat pembayaran sampel bawaan pabrik.
+                    </p>
+                  </div>
+                </button>
+
+                {/* Method 2: Purge everything clean */}
+                <button
+                  onClick={handleClearAllData}
+                  className="p-3.5 border border-rose-200 hover:border-rose-400 bg-rose-50/10 hover:bg-rose-50/30 text-left rounded-xl transition flex gap-3 items-start group cursor-pointer"
+                >
+                  <div className="p-2 bg-rose-50 text-rose-600 rounded-lg group-hover:bg-rose-100 shrink-0">
+                    <Trash2 size={16} />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-rose-950">Metode B: Bersihkan / Kosongkan Database (Hard Reset)</h5>
+                    <p className="text-[11px] text-rose-600/80 mt-0.5">
+                      Menghapus mutlak seluruh record data di dalam sistem. Aplikasi akan bernilai kosong (0 pelanggan, 0 riwayat transaksi).
+                    </p>
+                  </div>
+                </button>
+
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsResetModalOpen(false)}
+                className="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-700 bg-white hover:bg-slate-100 border border-slate-205 rounded-xl transition cursor-pointer"
+              >
+                Batal (Simpan Data)
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );
