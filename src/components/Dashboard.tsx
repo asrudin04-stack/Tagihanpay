@@ -35,7 +35,7 @@ import {
   Pie, 
   Cell 
 } from "recharts";
-import { Pelanggan, Transaksi, BiayaTarif, formatRupiah, getMonthLabel } from "../types";
+import { Pelanggan, Transaksi, BiayaTarif, TanggalPembayaran, formatRupiah, getMonthLabel } from "../types";
 
 // Custom tooltip for professional visual consistency
 const CustomTooltip = ({ active, payload }: any) => {
@@ -54,6 +54,7 @@ interface DashboardProps {
   pelangganList: Pelanggan[];
   transaksiList: Transaksi[];
   biayaList: BiayaTarif[];
+  tanggalList: TanggalPembayaran[];
   onNavigate: (tab: string) => void;
   onQuickPayment: (pelangganId: string) => void;
 }
@@ -62,6 +63,7 @@ export default function Dashboard({
   pelangganList,
   transaksiList,
   biayaList,
+  tanggalList,
   onNavigate,
   onQuickPayment
 }: DashboardProps) {
@@ -152,6 +154,80 @@ export default function Dashboard({
       { name: "Internet WIFI", value: serviceStats.WIFI, color: "#a855f7", icon: Wifi }
     ];
   }, [serviceStats]);
+
+  // Upcoming Deadlines filter & computation (with 3-day window comparison)
+  const upcomingDeadlines = useMemo(() => {
+    const list: {
+      pelanggan: Pelanggan;
+      tanggalJatuhTempo: number;
+      dueDateFormatted: string;
+      daysRemaining: number;
+      isPaid: boolean;
+      periode: string;
+      layanan: string;
+    }[] = [];
+
+    const todayObj = new Date();
+    // Reset time for safe date comparison
+    const todayNoTime = new Date(todayObj.getFullYear(), todayObj.getMonth(), todayObj.getDate());
+    const oneDayMs = 24 * 60 * 60 * 1000;
+
+    pelangganList.forEach((p) => {
+      // Find matching due date schedule for the service
+      const schedule = tanggalList.find((t) => t.layanan === p.layanan);
+      if (!schedule) return;
+
+      const dueDay = schedule.tanggalJatuhTempo;
+
+      // Candidate due dates: previous month, current month, next month
+      const candidates = [
+        new Date(todayNoTime.getFullYear(), todayNoTime.getMonth() - 1, dueDay),
+        new Date(todayNoTime.getFullYear(), todayNoTime.getMonth(), dueDay),
+        new Date(todayNoTime.getFullYear(), todayNoTime.getMonth() + 1, dueDay)
+      ];
+
+      candidates.forEach((candidate) => {
+        const diffMs = candidate.getTime() - todayNoTime.getTime();
+        const diffDays = Math.round(diffMs / oneDayMs);
+
+        // Check if within next 3 days (inclusive of today)
+        if (diffDays >= 0 && diffDays <= 3) {
+          // Format period code YYYY-MM
+          const year = candidate.getFullYear();
+          const month = String(candidate.getMonth() + 1).padStart(2, '0');
+          const periodStr = `${year}-${month}`;
+
+          // Check if this specific customer has paid for this service and period already
+          const hasPaid = transaksiList.some(
+            (tx) =>
+              tx.idPelanggan === p.id &&
+              tx.layanan === p.layanan &&
+              tx.periode === periodStr
+          );
+
+          // Format due date in Indonesian
+          const dueDateFormatted = candidate.toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "long",
+            year: "numeric"
+          });
+
+          list.push({
+            pelanggan: p,
+            tanggalJatuhTempo: dueDay,
+            dueDateFormatted,
+            daysRemaining: diffDays,
+            isPaid: hasPaid,
+            periode: periodStr,
+            layanan: p.layanan
+          });
+        }
+      });
+    });
+
+    // Sort by days remaining ascending (soonest first)
+    return list.sort((a, b) => a.daysRemaining - b.daysRemaining);
+  }, [pelangganList, tanggalList, transaksiList]);
 
   return (
     <div className="space-y-6" id="modern-elegant-dashboard">
@@ -422,7 +498,78 @@ export default function Dashboard({
       </div>
 
       {/* Row: Recent Transactions & Urgent Deadlines / Tasks */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="monitoring-flow">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="monitoring-flow">
+
+        {/* Upcoming Deadlines (Next 3 Days) Panel */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs space-y-4 flex flex-col justify-between" id="upcoming-deadlines-panel">
+          <div className="flex justify-between items-center">
+            <div className="space-y-0.5">
+              <h4 className="text-sm font-bold text-slate-850">Tenggat Jatuh Tempo Terdekat</h4>
+              <p className="text-[11px] text-slate-400 font-medium font-sans">Jadwal batas bayar dalam 3 hari ke depan.</p>
+            </div>
+            <span className="px-2.5 py-0.5 text-[9px] font-mono font-bold bg-amber-50 border border-amber-100 text-amber-600 rounded-md uppercase">
+              3 HARI KEDEPAN
+            </span>
+          </div>
+
+          <div className="space-y-2.5 max-h-[280px] overflow-y-auto pr-1 flex-1 mt-2">
+            {upcomingDeadlines.map((item, index) => (
+              <div 
+                key={`${item.pelanggan.id}-${item.periode}-${index}`} 
+                className={`p-3 rounded-xl border flex justify-between items-center transition duration-350 ${
+                  item.isPaid 
+                    ? "bg-emerald-50/10 border-emerald-100/40 hover:bg-emerald-50/20" 
+                    : "bg-amber-50/20 border-amber-100/40 hover:bg-amber-50/40"
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${item.isPaid ? "bg-emerald-500" : "bg-amber-500 animate-pulse"}`}></div>
+                  <div className="min-w-0">
+                    <h5 className="text-xs font-bold text-slate-850 truncate">{item.pelanggan.nama}</h5>
+                    <p className="text-[10px] text-slate-550 flex flex-wrap items-center gap-1.5 mt-0.5 font-sans">
+                      <span className={`font-extrabold text-[9px] px-1 rounded-sm ${
+                        item.layanan === "PLN" ? "bg-amber-50 border border-amber-100 text-amber-700" :
+                        item.layanan === "PDAM" ? "bg-blue-50 border border-blue-100 text-blue-700" :
+                        "bg-purple-50 border border-purple-100 text-purple-700"
+                      }`}>{item.layanan}</span>
+                      <span className="text-slate-400">•</span>
+                      <span className="font-mono text-slate-500">{item.dueDateFormatted}</span>
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2 shrink-0">
+                  {item.isPaid ? (
+                    <span className="text-[9px] font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-150 px-2 py-0.5 rounded-md">
+                      LUNAS
+                    </span>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] font-extrabold text-amber-600 bg-amber-50 border border-amber-150 px-2 py-0.5 rounded-md shrink-0">
+                        {item.daysRemaining === 0 ? "HARI INI" : `${item.daysRemaining} HARI`}
+                      </span>
+                      <button 
+                        onClick={() => onQuickPayment(item.pelanggan.id)}
+                        className="p-1 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[9px] rounded-md transition cursor-pointer active:scale-95 shrink-0"
+                        title="Proses Bayar"
+                      >
+                        Bayar
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {upcomingDeadlines.length === 0 && (
+              <div className="p-8 text-center bg-slate-50/50 text-slate-400 rounded-2xl border border-dashed border-slate-200 text-xs flex flex-col items-center justify-center gap-2 h-full min-h-[220px]">
+                <Calendar size={24} className="text-slate-300" />
+                <span className="font-bold text-slate-700">Aman untuk 3 Hari ke Depan</span>
+                <span className="text-[10.5px] text-slate-450 max-w-[220px]">Tidak ada pelanggan dengan tenggat waktu dalam 3 hari ini.</span>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Recent Transactions List Panel */}
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs space-y-4 flex flex-col justify-between">

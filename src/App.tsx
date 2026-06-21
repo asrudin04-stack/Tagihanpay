@@ -861,6 +861,7 @@ export default function App() {
                   pelangganList={pelangganList}
                   transaksiList={transaksiList}
                   biayaList={biayaList}
+                  tanggalList={tanggalList}
                   onNavigate={(tab) => setActiveTab(tab)}
                   onQuickPayment={handleQuickPaymentRoute}
                 />
