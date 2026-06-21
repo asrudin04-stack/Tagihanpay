@@ -52,6 +52,7 @@ import MasterTanggal from "./components/MasterTanggal";
 import MasterBiaya from "./components/MasterBiaya";
 import TransaksiView from "./components/TransaksiView";
 import LaporanView from "./components/LaporanView";
+import PengaturanAkses from "./components/PengaturanAkses";
 
 export default function App() {
   
@@ -73,6 +74,19 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
 
+  const [adminUserCred, setAdminUserCred] = useState(() => {
+    return localStorage.getItem("tagihanpay_admin_user") || "admin";
+  });
+  const [adminPassCred, setAdminPassCred] = useState(() => {
+    return localStorage.getItem("tagihanpay_admin_pass") || "admin";
+  });
+  const [kasirUserCred, setKasirUserCred] = useState(() => {
+    return localStorage.getItem("tagihanpay_kasir_user") || "kasir";
+  });
+  const [kasirPassCred, setKasirPassCred] = useState(() => {
+    return localStorage.getItem("tagihanpay_kasir_pass") || "kasir";
+  });
+
   const handleLoginSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setLoginError("");
@@ -80,11 +94,11 @@ export default function App() {
     const trimmedUser = loginUsername.trim().toLowerCase();
     const trimmedPass = loginPassword;
 
-    if (trimmedUser === "admin" && trimmedPass === "admin") {
+    if (trimmedUser === adminUserCred.toLowerCase() && trimmedPass === adminPassCred) {
       setUserRole("administrator");
       localStorage.setItem("tagihanpay_role", "administrator");
       setActiveTab("dashboard");
-    } else if (trimmedUser === "kasir" && trimmedPass === "kasir") {
+    } else if (trimmedUser === kasirUserCred.toLowerCase() && trimmedPass === kasirPassCred) {
       setUserRole("kasir");
       localStorage.setItem("tagihanpay_role", "kasir");
       setActiveTab("dashboard");
@@ -375,8 +389,8 @@ export default function App() {
           {/* Help Banner Details */}
           <div className="bg-slate-800/40 p-4 rounded-xl border border-slate-800 text-center text-[10px] text-slate-400 font-mono tracking-wide">
             💡 <span className="font-bold text-slate-300">Informasi Akun Demo:</span><br/>
-            • Administrator: username & password <code className="text-indigo-300 font-bold bg-slate-900 px-1 rounded-sm">admin</code><br/>
-            • Kasir Loket: username & password <code className="text-amber-300 font-bold bg-slate-900 px-1 rounded-sm">kasir</code>
+            • Administrator: user <code className="text-indigo-300 font-bold bg-slate-900 px-1 rounded-sm">{adminUserCred}</code> sandi <code className="text-indigo-300 font-bold bg-slate-900 px-1 rounded-sm">{adminPassCred}</code><br/>
+            • Kasir Loket: user <code className="text-amber-300 font-bold bg-slate-900 px-1 rounded-sm">{kasirUserCred}</code> sandi <code className="text-amber-300 font-bold bg-slate-900 px-1 rounded-sm">{kasirPassCred}</code>
           </div>
 
         </div>
@@ -502,6 +516,23 @@ export default function App() {
               >
                 <FileText size={15} />
                 Menu Laporan Lengkap
+              </button>
+            </div>
+
+            {/* Account Settings Subsection */}
+            <div className="space-y-1.5">
+              <span className="px-3 text-[9px] uppercase font-mono tracking-wider text-slate-500 font-bold">AKSES & KEAMANAN</span>
+              
+              <button
+                onClick={() => setActiveTab("pengaturan")}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                  activeTab === "pengaturan"
+                    ? "bg-indigo-600 text-white shadow-xs font-bold"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                }`}
+              >
+                <Lock size={15} />
+                User & Sandi Akses
               </button>
             </div>
 
@@ -631,6 +662,15 @@ export default function App() {
                 }`}
               >
                 <FileText size={15} /> Menu Laporan Lengkap
+              </button>
+
+              <button
+                onClick={() => { setActiveTab("pengaturan"); setIsMobileMenuOpen(false); }}
+                className={`py-2 px-3 text-xs font-bold rounded-lg text-left flex items-center gap-2.5 ${
+                  activeTab === "pengaturan" ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-slate-850"
+                }`}
+              >
+                <Lock size={15} /> User & Sandi Akses
               </button>
 
               {userRole === "administrator" && (
@@ -774,6 +814,25 @@ export default function App() {
                   pelangganList={pelangganList}
                   transaksiList={transaksiList}
                   biayaList={biayaList}
+                />
+              )}
+
+              {/* RENDER VIEW: PENGATURAN AKSES */}
+              {activeTab === "pengaturan" && (
+                <PengaturanAkses 
+                  userRole={userRole!}
+                  adminUser={adminUserCred}
+                  adminPass={adminPassCred}
+                  kasirUser={kasirUserCred}
+                  kasirPass={kasirPassCred}
+                  onUpdateAdmin={(u, p) => {
+                    setAdminUserCred(u);
+                    setAdminPassCred(p);
+                  }}
+                  onUpdateKasir={(u, p) => {
+                    setKasirUserCred(u);
+                    setKasirPassCred(p);
+                  }}
                 />
               )}
 
