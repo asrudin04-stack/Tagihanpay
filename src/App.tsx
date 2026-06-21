@@ -54,7 +54,7 @@ import MasterBiaya from "./components/MasterBiaya";
 import TransaksiView from "./components/TransaksiView";
 import LaporanView from "./components/LaporanView";
 import PengaturanAkses from "./components/PengaturanAkses";
-import SyncSheetsView from "./components/SyncSheetsView";
+import { exportDataToSpreadsheet, getAccessToken } from "./lib/googleSheets";
 
 export default function App() {
   
@@ -63,6 +63,19 @@ export default function App() {
   const [tanggalList, setTanggalList] = useState<TanggalPembayaran[]>([]);
   const [biayaList, setBiayaList] = useState<BiayaTarif[]>([]);
   const [transaksiList, setTransaksiList] = useState<Transaksi[]>([]);
+  const [isInitialLoadFinished, setIsInitialLoadFinished] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  // Clear syncError when auth changes
+  useEffect(() => {
+    const handleAuthChanged = () => {
+      setSyncError(null);
+    };
+    window.addEventListener("tagihanpay_google_auth_changed", handleAuthChanged);
+    return () => {
+      window.removeEventListener("tagihanpay_google_auth_changed", handleAuthChanged);
+    };
+  }, []);
 
   // Navigation: active main view tab state
   const [activeTab, setActiveTab] = useState<string>("dashboard");
@@ -196,7 +209,37 @@ export default function App() {
       setTransaksiList(INITIAL_TRANSAKSI);
       localStorage.setItem("pembayaran_transaksi", JSON.stringify(INITIAL_TRANSAKSI));
     }
+    setIsInitialLoadFinished(true);
   }, []);
+
+  // Auto-sync effect to run in background whenever database is changed
+  useEffect(() => {
+    if (!isInitialLoadFinished) return;
+
+    const activeToken = getAccessToken();
+    const spreadSheetId = localStorage.getItem("tagihanpay_sheet_id");
+    if (activeToken && spreadSheetId) {
+      exportDataToSpreadsheet(spreadSheetId, activeToken, pelangganList, transaksiList)
+        .then(() => {
+          const nowStr = new Date().toLocaleString("id-ID", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+          });
+          localStorage.setItem("tagihanpay_last_sync", nowStr);
+          setSyncError(null);
+          // Let settings component learn about new sync instantly
+          window.dispatchEvent(new Event("tagihanrun_sync_completed"));
+        })
+        .catch(err => {
+          console.error("Auto sheet sync triggered, background error: ", err);
+          setSyncError(err.message || String(err));
+        });
+    }
+  }, [pelangganList, transaksiList, isInitialLoadFinished]);
 
   // --- CRUD DISPATCHERS SYNCS ---
 
@@ -556,7 +599,7 @@ export default function App() {
 
             {/* Account Settings Subsection */}
             <div className="space-y-1.5">
-              <span className="px-3 text-[9px] uppercase font-mono tracking-wider text-slate-500 font-bold">AKSES & KEAMANAN</span>
+              <span className="px-3 text-[9px] uppercase font-mono tracking-wider text-slate-500 font-bold">AKSES & INTEGRASI</span>
               
               <button
                 onClick={() => setActiveTab("pengaturan")}
@@ -567,19 +610,7 @@ export default function App() {
                 }`}
               >
                 <Lock size={15} />
-                User & Sandi Akses
-              </button>
-
-              <button
-                onClick={() => setActiveTab("sheets")}
-                className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                  activeTab === "sheets"
-                    ? "bg-indigo-600 text-white shadow-xs font-bold"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800"
-                }`}
-              >
-                <FileSpreadsheet size={15} className="text-emerald-500" />
-                Sinkron Google Sheets
+                Pengaturan & Integrasi
               </button>
             </div>
 
@@ -717,16 +748,7 @@ export default function App() {
                   activeTab === "pengaturan" ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-slate-850"
                 }`}
               >
-                <Lock size={15} /> User & Sandi Akses
-              </button>
-
-              <button
-                onClick={() => { setActiveTab("sheets"); setIsMobileMenuOpen(false); }}
-                className={`py-2 px-3 text-xs font-bold rounded-lg text-left flex items-center gap-2.5 ${
-                  activeTab === "sheets" ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-slate-850"
-                }`}
-              >
-                <FileSpreadsheet size={15} className="text-emerald-500" /> Sinkron Google Sheets
+                <Lock size={15} /> Pengaturan & Integrasi
               </button>
 
               {userRole === "administrator" && (
@@ -802,6 +824,28 @@ export default function App() {
 
         {/* Primary Page Canvas (View render switcher on activeTab) */}
         <div className="flex-1 p-4 md:p-8 max-w-7xl w-full mx-auto" id="primary-content-canvas">
+          {syncError && (
+            <div className="mb-6 p-4 rounded-xl border border-rose-100 bg-rose-50 text-rose-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn" id="google-sheets-sync-error-banner">
+              <div className="flex items-start gap-3 text-left">
+                <AlertTriangle className="text-rose-600 shrink-0 mt-0.5 animate-bounce" size={18} />
+                <div>
+                  <p className="text-xs font-bold">Sinkronisasi Google Sheets Terhenti</p>
+                  <p className="text-[11px] opacity-90 mt-0.5">{syncError}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("pengaturan");
+                  setSyncError(null);
+                }}
+                className="px-3.5 py-1.5 bg-rose-650 hover:bg-rose-700 text-white font-bold text-[10px] rounded-lg transition shrink-0 select-none cursor-pointer self-start sm:self-center"
+              >
+                Otorisasi Ulang Akun
+              </button>
+            </div>
+          )}
+
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -873,7 +917,7 @@ export default function App() {
                 />
               )}
 
-              {/* RENDER VIEW: PENGATURAN AKSES */}
+              {/* RENDER VIEW: PENGATURAN AKSES & INTEGRASI */}
               {activeTab === "pengaturan" && (
                 <PengaturanAkses 
                   userRole={userRole!}
@@ -889,12 +933,6 @@ export default function App() {
                     setKasirUserCred(u);
                     setKasirPassCred(p);
                   }}
-                />
-              )}
-
-              {/* RENDER VIEW: SINKRONISASI GOOGLE SHEETS */}
-              {activeTab === "sheets" && (
-                <SyncSheetsView 
                   pelangganList={pelangganList}
                   transaksiList={transaksiList}
                   onImportPelanggan={handleImportPelanggan}

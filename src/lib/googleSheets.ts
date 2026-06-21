@@ -39,15 +39,31 @@ export const initAuth = (
     cachedAccessToken = savedToken;
   }
 
-  return onAuthStateChanged(auth, async (user: User | null) => {
-    if (user && cachedAccessToken) {
-      if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
+  const checkState = (currentUser: User | null) => {
+    const activeToken = getAccessToken();
+    if (currentUser && activeToken) {
+      if (onAuthSuccess) onAuthSuccess(currentUser, activeToken);
     } else {
       cachedAccessToken = null;
       sessionStorage.removeItem("g_sheets_token");
       if (onAuthFailure) onAuthFailure();
     }
+  };
+
+  const unsubscribeAuth = onAuthStateChanged(auth, async (user: User | null) => {
+    checkState(user);
   });
+
+  const handleCustomEvent = () => {
+    checkState(auth.currentUser);
+  };
+
+  window.addEventListener("tagihanpay_google_auth_changed", handleCustomEvent);
+
+  return () => {
+    unsubscribeAuth();
+    window.removeEventListener("tagihanpay_google_auth_changed", handleCustomEvent);
+  };
 };
 
 // Sign in with premium google popup
@@ -62,6 +78,7 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
 
     cachedAccessToken = credential.accessToken;
     sessionStorage.setItem("g_sheets_token", cachedAccessToken);
+    window.dispatchEvent(new Event("tagihanpay_google_auth_changed"));
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
     console.error("Kesalahan Sign-In Google:", error);
@@ -76,6 +93,7 @@ export const googleLogOut = async () => {
   await signOut(auth);
   cachedAccessToken = null;
   sessionStorage.removeItem("g_sheets_token");
+  window.dispatchEvent(new Event("tagihanpay_google_auth_changed"));
 };
 
 // Fetch token
@@ -106,7 +124,9 @@ const apiRequest = async (url: string, method = "GET", body: any = null, token: 
   if (!response.ok) {
     if (response.status === 401) {
       // Clear token to force reauth
+      cachedAccessToken = null;
       sessionStorage.removeItem("g_sheets_token");
+      window.dispatchEvent(new Event("tagihanpay_google_auth_changed"));
       throw new Error("Sesi Google Sheets Anda telah kedaluwarsa atau membutuhkan otorisasi ulang. Silakan putuskan akun dan login kembali.");
     }
     const errText = await response.text();
