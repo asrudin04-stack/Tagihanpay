@@ -138,10 +138,13 @@ export default function App() {
   // --- CRUD DISPATCHERS SYNCS ---
 
   // Pelanggan CRUD
-  const handleAddPelanggan = (p: Pelanggan) => {
-    const updated = [p, ...pelangganList];
-    setPelangganList(updated);
-    localStorage.setItem("pembayaran_pelanggan", JSON.stringify(updated));
+  const handleAddPelanggan = (p: Pelanggan | Pelanggan[]) => {
+    setPelangganList(prev => {
+      const newItems = Array.isArray(p) ? p : [p];
+      const updated = [...newItems, ...prev];
+      localStorage.setItem("pembayaran_pelanggan", JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const handleUpdatePelanggan = (p: Pelanggan) => {
@@ -195,10 +198,13 @@ export default function App() {
   };
 
   // Transaksi Insert
-  const handleAddTransaksi = (tx: Transaksi) => {
-    const updated = [tx, ...transaksiList];
-    setTransaksiList(updated);
-    localStorage.setItem("pembayaran_transaksi", JSON.stringify(updated));
+  const handleAddTransaksi = (tx: Transaksi | Transaksi[]) => {
+    setTransaksiList(prev => {
+      const newItems = Array.isArray(tx) ? tx : [tx];
+      const updated = [...newItems, ...prev];
+      localStorage.setItem("pembayaran_transaksi", JSON.stringify(updated));
+      return updated;
+    });
   };
 
   // Trigger quick payment navigation helper

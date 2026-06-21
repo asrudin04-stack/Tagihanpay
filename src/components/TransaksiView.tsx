@@ -37,7 +37,7 @@ interface TransaksiViewProps {
   pelangganList: Pelanggan[];
   transaksiList: Transaksi[];
   biayaList: BiayaTarif[];
-  onAddTransaksi: (newTx: Transaksi) => void;
+  onAddTransaksi: (newTx: Transaksi | Transaksi[]) => void;
   // State for preselecting from other tabs
   initialSelectedCustomerId?: string;
   clearInitialSelectedCustomerId?: () => void;
@@ -276,9 +276,14 @@ export default function TransaksiView({
       return;
     }
 
-    validData.forEach((row) => {
-      const txId = `INV-${row.periode.replace("-", "")}-${Math.floor(1000 + Math.random() * 9000)}`;
-      onAddTransaksi({
+    const newlyCreatedTransactions: Transaksi[] = [];
+
+    validData.forEach((row, index) => {
+      // Adding index or random variation to ensure high entropy transaction IDs and reference numbers
+      const randSeed = Math.floor(1000 + Math.random() * 9000);
+      const txId = `INV-${row.periode.replace("-", "")}-${randSeed}-${index}`;
+      
+      newlyCreatedTransactions.push({
         id: txId,
         idPelanggan: row.idPelanggan,
         namaPelanggan: row.namaPelanggan,
@@ -288,9 +293,11 @@ export default function TransaksiView({
         metodePembayaran: row.metodePembayaran,
         tanggalBayar: row.tanggalBayar,
         keterangan: row.keterangan || `Pembayaran Tagihan ${row.layanan} Periode ${row.periode} (Kolektif Masa)`,
-        noReff: `REF-${row.layanan}-${Math.floor(1000 + Math.random() * 9000)}`
+        noReff: `REF-${row.layanan}-${randSeed}-${index}`
       });
     });
+
+    onAddTransaksi(newlyCreatedTransactions);
 
     setImportStatusKolektif({
       type: "success",

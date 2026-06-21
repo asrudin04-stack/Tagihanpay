@@ -27,7 +27,7 @@ import { Pelanggan } from "../types";
 
 interface MasterPelangganProps {
   pelangganList: Pelanggan[];
-  onAddPelanggan: (pelanggan: Pelanggan) => void;
+  onAddPelanggan: (pelanggan: Pelanggan | Pelanggan[]) => void;
   onUpdatePelanggan: (pelanggan: Pelanggan) => void;
   onDeletePelanggan: (id: string) => void;
 }
@@ -223,27 +223,28 @@ export default function MasterPelanggan({
   const processImportExecute = () => {
     if (parsedData.length === 0) return;
     
-    parsedData.forEach((row, index) => {
-      // Generate ID
-      const currentYear = new Date().getFullYear();
-      const prefix = `PLG-${currentYear}-`;
-      
-      let maxNum = 0;
-      // We read latest pelangganList to generate distinct sequence IDs
-      pelangganList.forEach(p => {
-        if (p.id.startsWith(prefix)) {
-          const numPart = parseInt(p.id.replace(prefix, ""), 10);
-          if (!isNaN(numPart) && numPart > maxNum) {
-            maxNum = numPart;
-          }
+    // Pre-calculate the starting serial number based on max existing numeric ID suffix
+    const currentYear = new Date().getFullYear();
+    const prefix = `PLG-${currentYear}-`;
+    
+    let maxNum = 0;
+    pelangganList.forEach(p => {
+      if (p.id.startsWith(prefix)) {
+        const numPart = parseInt(p.id.replace(prefix, ""), 10);
+        if (!isNaN(numPart) && numPart > maxNum) {
+          maxNum = numPart;
         }
-      });
+      }
+    });
 
+    const newlyCreatedPelanggan: Pelanggan[] = [];
+
+    parsedData.forEach((row, index) => {
       const nextNum = maxNum + 1 + index;
       const paddedNum = String(nextNum).padStart(4, "0");
       const generatedId = `${prefix}${paddedNum}`;
 
-      onAddPelanggan({
+      newlyCreatedPelanggan.push({
         id: generatedId,
         nama: row.nama,
         noTelp: row.noTelp,
@@ -252,6 +253,8 @@ export default function MasterPelanggan({
         noMeter: row.noMeter
       });
     });
+
+    onAddPelanggan(newlyCreatedPelanggan);
 
     setImportStatus({
       type: "success",
