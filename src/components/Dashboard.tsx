@@ -23,7 +23,32 @@ import {
   AlertTriangle,
   Calendar
 } from "lucide-react";
+import { 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  PieChart, 
+  Pie, 
+  Cell 
+} from "recharts";
 import { Pelanggan, Transaksi, BiayaTarif, formatRupiah, getMonthLabel } from "../types";
+
+// Custom tooltip for professional visual consistency
+const CustomTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-slate-900 border border-slate-850 text-white text-xs p-2.5 px-3.5 rounded-xl shadow-xl font-mono leading-relaxed pointer-events-none z-50">
+        <p className="font-bold text-slate-450 mb-0.5">{payload[0].payload.label || payload[0].name}</p>
+        <p className="text-emerald-400 font-extrabold text-[11.5px]">{formatRupiah(payload[0].value)}</p>
+      </div>
+    );
+  }
+  return null;
+};
 
 interface DashboardProps {
   pelangganList: Pelanggan[];
@@ -119,6 +144,14 @@ export default function Dashboard({
     const maxVal = Math.max(...monthlyRevenue.map(m => m.total), 1);
     return maxVal;
   }, [monthlyRevenue]);
+
+  const categoryChartData = useMemo(() => {
+    return [
+      { name: "Listrik PLN", value: serviceStats.PLN, color: "#fbbf24", icon: Zap },
+      { name: "Air PDAM", value: serviceStats.PDAM, color: "#3b82f6", icon: Droplet },
+      { name: "Internet WIFI", value: serviceStats.WIFI, color: "#a855f7", icon: Wifi }
+    ];
+  }, [serviceStats]);
 
   return (
     <div className="space-y-6" id="modern-elegant-dashboard">
@@ -257,7 +290,7 @@ export default function Dashboard({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="dashboard-graphics">
         
         {/* Custom Monthly Revenue Bar Chart with Elegant Mesh Layout */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs lg:col-span-2 space-y-6 flex flex-col justify-between">
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs lg:col-span-2 space-y-6 flex flex-col justify-between" id="monthly-revenue-chart-card">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-1.5 text-indigo-600 font-bold text-xs uppercase tracking-wide">
@@ -265,135 +298,115 @@ export default function Dashboard({
                 <span>Analisa Grafik</span>
               </div>
               <h4 className="text-base font-bold text-slate-850">Tren Pendapatan Bulanan</h4>
-              <p className="text-xs text-slate-500">Arus kas pendapatan riil bulanan yang masuk sepanjang tahun 2026.</p>
+              <p className="text-xs text-slate-500">Arus kas pendapatan riil bulanan yang masuk sepanjang tahun 2526.</p>
             </div>
             <span className="px-3 py-1 text-[10px] font-bold bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full font-mono max-w-fit">
               TAHUN AGARAN 2026
             </span>
           </div>
 
-          {/* Bar Diagram Platform using CSS/SVG with custom visual details */}
-          <div className="relative pt-6">
-            
-            {/* Chart Guide Guidelines Grid */}
-            <div className="absolute inset-x-0 top-6 bottom-8 flex flex-col justify-between pointer-events-none opacity-40">
-              <div className="border-b border-dashed border-slate-200 w-full h-0"></div>
-              <div className="border-b border-dashed border-slate-200 w-full h-0"></div>
-              <div className="border-b border-dashed border-slate-200 w-full h-0"></div>
-              <div className="border-b border-slate-250 w-full h-0"></div>
-            </div>
+          {/* AreaChart using Recharts */}
+          <div className="h-64 w-full" id="revenue-recharts-container">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={monthlyRevenue}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="label" 
+                  tickFormatter={(tick) => tick.split(" ")[0]}
+                  tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600, fontFamily: 'monospace' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis 
+                  tickFormatter={(val) => `Rp ${(val / 1000).toFixed(0)}k`}
+                  tick={{ fill: '#64748b', fontSize: 10, fontWeight: 500, fontFamily: 'monospace' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Area 
+                  type="monotone" 
+                  dataKey="total" 
+                  stroke="#4f46e5" 
+                  strokeWidth={2.5}
+                  fillOpacity={1} 
+                  fill="url(#colorTotal)" 
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
 
-            <div className="h-60 flex items-end justify-between gap-3 sm:gap-6 px-1 relative z-10">
-              {monthlyRevenue.map((item) => {
-                const barHeight = item.total > 0 ? (item.total / maxRevenue) * 100 : 3;
-                return (
-                  <div key={item.periode} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                    
-                    {/* Tooltip on hover */}
-                    <div className="absolute bottom-full mb-2.5 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-xs py-1.5 px-3 rounded-lg shadow-xl pointer-events-none z-25 flex flex-col items-center whitespace-nowrap">
-                      <span className="font-semibold text-[10px] text-slate-350">{item.label}</span>
-                      <span className="text-emerald-400 font-mono font-black mt-0.5">{formatRupiah(item.total)}</span>
-                      <div className="w-2 h-2 bg-slate-900 rotate-45 -mb-1 mt-1"></div>
-                    </div>
-
-                    {/* Interactive Animated Bar */}
-                    <div className="w-full bg-slate-50 border border-slate-100 rounded-t-xl group-hover:border-indigo-200 group-hover:bg-indigo-50/50 active:scale-95 transition-all duration-300 h-full flex flex-col justify-end overflow-hidden">
-                      <div 
-                        className="w-full bg-indigo-650 hover:bg-indigo-550 rounded-t-lg transition-all duration-1000 ease-out flex items-center justify-center text-[9.5px] text-white font-mono min-h-[4px]"
-                        style={{ height: `${barHeight}%` }}
-                      >
-                        {item.total > 0 && barHeight > 15 && (
-                          <span className="hidden sm:inline font-bold rotate-90 sm:rotate-0 tracking-tight">
-                            Rp {(item.total / 1000).toFixed(0)}k
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <span className="text-[10px] font-bold text-slate-500 mt-2.5 font-mono">
-                      {item.label.split(" ")[0]}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Scale boundaries text info */}
-            <div className="flex justify-between items-center text-[9px] font-mono text-slate-400 mt-5 pt-2 border-t border-slate-100">
-              <span className="font-semibold">Titik Nol: Rp 0</span>
-              <span className="text-indigo-600 font-bold">Volume Puncak: {formatRupiah(maxRevenue)}</span>
-            </div>
-
+          <div className="flex justify-between items-center text-[9px] font-mono text-slate-400 pt-2 border-t border-slate-100">
+            <span className="font-semibold">Sistem Laporan Otomatis</span>
+            <span className="text-indigo-600 font-bold">Volume Puncak: {formatRupiah(maxRevenue)}</span>
           </div>
         </div>
 
         {/* Service Type Distribution Bento Card for Premium UI Feel */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs flex flex-col justify-between space-y-5">
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs flex flex-col justify-between space-y-5" id="service-proportion-card">
           <div className="space-y-1">
             <span className="text-[10px] font-mono font-black uppercase text-slate-400 tracking-wider block">Analisa Layanan</span>
             <h4 className="text-base font-bold text-slate-850">Proporsi Kas Masuk</h4>
             <p className="text-xs text-slate-500">Volume setoran dana berdasarkan kategori utama.</p>
           </div>
 
-          <div className="space-y-4 my-auto">
-            
-            {/* PLN Category Item */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-700 flex items-center gap-2">
-                  <span className="inline-flex p-1.5 bg-amber-50 text-amber-550 rounded-lg border border-amber-100">
-                    <Zap size={13} fill="currentColor" />
-                  </span>
-                  Listrik PLN
-                </span>
-                <span className="font-black text-slate-800 font-mono tracking-tight">{formatRupiah(serviceStats.PLN)}</span>
-              </div>
-              <div className="w-full bg-slate-50 border border-slate-100 h-2.5 rounded-full overflow-hidden p-0.5">
-                <div 
-                  className="bg-amber-400 h-full rounded-full transition-all duration-1000"
-                  style={{ width: `${totalPendapatan > 0 ? (serviceStats.PLN / totalPendapatan) * 100 : 0}%` }}
-                ></div>
-              </div>
+          {/* Interactive PieChart block */}
+          <div className="relative flex items-center justify-center h-44" id="pie-chart-wrapper">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={categoryChartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={70}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {categoryChartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+              <span className="text-[9px] uppercase font-mono font-black text-slate-400 tracking-wider">Total Revenue</span>
+              <span className="text-xs font-black text-slate-800 font-mono mt-0.5">{formatRupiah(totalPendapatan)}</span>
             </div>
+          </div>
 
-            {/* PDAM Category Item */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-700 flex items-center gap-2">
-                  <span className="inline-flex p-1.5 bg-blue-50 text-blue-550 rounded-lg border border-blue-100">
-                    <Droplet size={13} fill="currentColor" />
+          {/* Clean metadata list mapping the categories */}
+          <div className="space-y-2.5" id="pie-legend-items">
+            {categoryChartData.map((item, index) => {
+              const Icon = item.icon;
+              const percentage = totalPendapatan > 0 ? ((item.value / totalPendapatan) * 100).toFixed(1) : "0.0";
+              
+              return (
+                <div key={index} className="flex items-center justify-between text-xs p-1 px-2 hover:bg-slate-50 rounded-xl transition">
+                  <span className="font-bold text-slate-700 flex items-center gap-2">
+                    <span className="p-1 rounded-md" style={{ backgroundColor: `${item.color}15`, color: item.color }}>
+                      <Icon size={12} fill={item.color === "#fbbf24" || item.color === "#3b82f6" ? "currentColor" : "none"} />
+                    </span>
+                    {item.name}
                   </span>
-                  Air Bersih PDAM
-                </span>
-                <span className="font-black text-slate-800 font-mono tracking-tight">{formatRupiah(serviceStats.PDAM)}</span>
-              </div>
-              <div className="w-full bg-slate-50 border border-slate-100 h-2.5 rounded-full overflow-hidden p-0.5">
-                <div 
-                  className="bg-blue-500 h-full rounded-full transition-all duration-1000"
-                  style={{ width: `${totalPendapatan > 0 ? (serviceStats.PDAM / totalPendapatan) * 100 : 0}%` }}
-                ></div>
-              </div>
-            </div>
-
-            {/* WIFI Category Item */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center text-xs">
-                <span className="font-bold text-slate-700 flex items-center gap-2">
-                  <span className="inline-flex p-1.5 bg-purple-50 text-purple-550 rounded-lg border border-purple-100">
-                    <Wifi size={13} />
-                  </span>
-                  Internet WIFI
-                </span>
-                <span className="font-black text-slate-800 font-mono tracking-tight">{formatRupiah(serviceStats.WIFI)}</span>
-              </div>
-              <div className="w-full bg-slate-50 border border-slate-100 h-2.5 rounded-full overflow-hidden p-0.5">
-                <div 
-                  className="bg-purple-500 h-full rounded-full transition-all duration-1000"
-                  style={{ width: `${totalPendapatan > 0 ? (serviceStats.WIFI / totalPendapatan) * 100 : 0}%` }}
-                ></div>
-              </div>
-            </div>
-
+                  
+                  <div className="flex items-center gap-3 font-mono">
+                    <span className="text-slate-400 text-[10px] font-bold">({percentage}%)</span>
+                    <span className="font-black text-slate-800">{formatRupiah(item.value)}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-semibold font-mono">
