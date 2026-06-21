@@ -212,10 +212,34 @@ export default function MasterPelanggan({
           return;
         }
         
-        // Find header row or assume: nama,noTelp,alamat,layanan,noMeter,idTarif,idTanggal
-        const headers = lines[0].toLowerCase().split(/[;,]/).map(h => h.trim());
-        const dataRows = lines.slice(1);
+        let headerRowIndex = 0;
+        let maxMatches = -1;
         
+        // Scan first 4 lines to robustly detect where the main column labels reside (handles double-header excel exports)
+        const scanRange = Math.min(lines.length, 4);
+        for (let i = 0; i < scanRange; i++) {
+          const colsInLine = lines[i].toLowerCase().split(/[;,]/).map(h => h.trim());
+          let matches = 0;
+          if (colsInLine.some(h => h.includes("nama"))) matches++;
+          if (colsInLine.some(h => h.includes("telp") || h.includes("hp") || h.includes("kontak") || h.includes("phone"))) matches++;
+          if (colsInLine.some(h => h.includes("alamat"))) matches++;
+          if (colsInLine.some(h => h.includes("pln") || h.includes("pdam") || h.includes("wifi") || h.includes("layanan") || h.includes("jenistagihan"))) matches++;
+          if (colsInLine.some(h => h.includes("meter") || h.includes("mtr"))) matches++;
+          
+          if (matches > maxMatches) {
+            maxMatches = matches;
+            headerRowIndex = i;
+          }
+        }
+
+        const headers = lines[headerRowIndex].toLowerCase().split(/[;,]/).map(h => h.trim());
+        const dataRows = lines.slice(headerRowIndex + 1);
+        
+        const isCheckmark = (val: string) => {
+          const v = val.toLowerCase().trim();
+          return ["v", "x", "1", "yes", "ya", "true", "active", "aktif", "ok", "✓"].includes(v);
+        };
+
         const results: any[] = [];
         dataRows.forEach((row, idx) => {
           if (!row.trim()) return;
@@ -250,7 +274,6 @@ export default function MasterPelanggan({
           let namaVal = "";
           let noTelpVal = "";
           let alamatVal = "";
-          let layananVal: 'PLN' | 'PDAM' | 'WIFI' = 'PLN';
           let noMeterVal = "";
           let idTarifVal = "";
           let idTanggalVal = "";
@@ -264,22 +287,21 @@ export default function MasterPelanggan({
           const namaIdx = getIndexByHeader(["nama"], 0);
           const telpIdx = getIndexByHeader(["telp", "hp", "kontak", "phone", "no"], 1);
           const alamatIdx = getIndexByHeader(["alamat", "address"], 2);
-          const layananIdx = getIndexByHeader(["layan"], 3);
-          const meterIdx = getIndexByHeader(["meter", "id_meter", "account"], 4);
-          const tarifIdx = getIndexByHeader(["tarif", "nominal", "biaya", "harga", "rate"], 5);
-          const tanggalIdx = getIndexByHeader(["tanggal", "tempo", "due"], 6);
+          const layananIdx = getIndexByHeader(["layanan", "layan", "jenistagihan", "jenis_tagihan"], 3);
+          const plnIdx = getIndexByHeader(["pln"], -1);
+          const pdamIdx = getIndexByHeader(["pdam"], -1);
+          const wifiIdx = getIndexByHeader(["wifi"], -1);
+          const meterIdx = getIndexByHeader(["meter", "id_meter", "account", "rekening", "no_mtr", "nometer"], 4);
+          const tarifIdx = getIndexByHeader(["tarif", "nominal", "biaya", "harga", "rate", "tarifbulanan", "tarif_bulanan"], 5);
+          const tanggalIdx = getIndexByHeader(["tanggal", "tempo", "due", "idtanggal", "id_tanggal"], 6);
 
           namaVal = cleanedCols[namaIdx] || "";
-          noTelpVal = cleanedCols[telpIdx] || cleanedCols[1] || "";
-          alamatVal = cleanedCols[alamatIdx] || cleanedCols[2] || "";
-          
-          const rawLayanan = String(cleanedCols[layananIdx] || cleanedCols[3] || "PLN").toUpperCase().trim();
-          layananVal = ['PLN', 'PDAM', 'WIFI'].includes(rawLayanan) ? (rawLayanan as 'PLN' | 'PDAM' | 'WIFI') : 'PLN';
-          
-          noMeterVal = cleanedCols[meterIdx] || cleanedCols[4] || "";
-          idTanggalVal = cleanedCols[tanggalIdx] || cleanedCols[6] || "";
+          noTelpVal = cleanedCols[telpIdx] || (cleanedCols[1] !== undefined ? cleanedCols[1] : "");
+          alamatVal = cleanedCols[alamatIdx] || (cleanedCols[2] !== undefined ? cleanedCols[2] : "");
+          noMeterVal = cleanedCols[meterIdx] || (cleanedCols[4] !== undefined ? cleanedCols[4] : "");
+          idTanggalVal = cleanedCols[tanggalIdx] || (cleanedCols[6] !== undefined ? cleanedCols[6] : "");
 
-          const rawTarifStr = (cleanedCols[tarifIdx] || cleanedCols[5] || "").trim();
+          const rawTarifStr = (cleanedCols[tarifIdx] || (cleanedCols[5] !== undefined ? cleanedCols[5] : "")).trim();
           if (rawTarifStr) {
             const digitsOnlyStr = rawTarifStr.replace(/[\s\.\,Rprp]/g, "");
             if (digitsOnlyStr && !isNaN(Number(digitsOnlyStr)) && /^\d+$/.test(digitsOnlyStr)) {
@@ -289,13 +311,61 @@ export default function MasterPelanggan({
             }
           }
 
-          if (namaVal) {
+          // Check if spreadsheet has separate PLN, PDAM, WIFI columns
+          const hasMultiServiceCols = plnIdx !== -1 || pdamIdx !== -1 || wifiIdx !== -1;
+          let addedAny = false;
+
+          if (hasMultiServiceCols) {
+            const servicesToTry: ('PLN' | 'PDAM' | 'WIFI')[] = ['PLN', 'PDAM', 'WIFI'];
+            const idxs = [plnIdx, pdamIdx, wifiIdx];
+
+            servicesToTry.forEach((srv, srvIdx) => {
+              const colIdx = idxs[srvIdx];
+              if (colIdx !== -1 && colIdx < cleanedCols.length) {
+                const val = cleanedCols[colIdx]?.trim() || "";
+                if (val && !["no", "tidak", "0", "-"].includes(val.toLowerCase())) {
+                  // Determine meter for this specific service
+                  let activeMeter = noMeterVal;
+                  if (!isCheckmark(val)) {
+                    // Cellular or cell text itself contains meter number instead of symbol checkmark
+                    activeMeter = val;
+                  }
+                  if (!activeMeter) {
+                    activeMeter = `${srv}-MTR-${Math.floor(1000 + Math.random() * 9000)}`;
+                  }
+
+                  if (namaVal) {
+                    results.push({
+                      nama: namaVal,
+                      noTelp: noTelpVal,
+                      alamat: alamatVal,
+                      layanan: srv,
+                      noMeter: activeMeter,
+                      idTarif: idTarifVal || undefined,
+                      idTanggal: idTanggalVal || undefined,
+                      nominalTarif: nominalTarifVal,
+                    });
+                    addedAny = true;
+                  }
+                }
+              }
+            });
+          }
+
+          // Fallback if no separate columns are activated or found
+          if (!addedAny && namaVal) {
+            const rawLayananIdx = layananIdx !== -1 ? layananIdx : 3;
+            const rawLayanan = String(cleanedCols[rawLayananIdx] || "PLN").toUpperCase().trim();
+            const finalLayanan: 'PLN' | 'PDAM' | 'WIFI' = ['PLN', 'PDAM', 'WIFI'].includes(rawLayanan) 
+              ? (rawLayanan as 'PLN' | 'PDAM' | 'WIFI') 
+              : 'PLN';
+
             results.push({
               nama: namaVal,
               noTelp: noTelpVal,
               alamat: alamatVal,
-              layanan: layananVal,
-              noMeter: noMeterVal,
+              layanan: finalLayanan,
+              noMeter: noMeterVal || `${finalLayanan}-MTR-${Math.floor(1000 + Math.random() * 9000)}`,
               idTarif: idTarifVal || undefined,
               idTanggal: idTanggalVal || undefined,
               nominalTarif: nominalTarifVal,
