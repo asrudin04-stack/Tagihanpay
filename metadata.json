@@ -1,0 +1,6 @@
+{
+  "name": "Pembayaran Tagihan Digital",
+  "description": "Aplikasi pembayaran tagihan digital PLN, PDAM, dan WIFI lengkap dengan Manajemen Pelanggan, Transaksi Pembayaran, Cetak Kwitansi, dan Menu Laporan Dinamis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
