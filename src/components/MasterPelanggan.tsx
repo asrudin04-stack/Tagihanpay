@@ -411,6 +411,20 @@ export default function MasterPelanggan({
     setIsFormOpen(true);
   };
 
+  const handleOpenCreateFormForTariff = (b: BiayaTarif) => {
+    setEditingPelanggan(null);
+    setNama("");
+    setNoTelp("");
+    setAlamat("");
+    setLayanan(b.layanan);
+    setNoMeter("");
+    setIdTarif(b.id);
+    const matchingDates = tanggalList.filter(t => t.layanan === b.layanan);
+    setIdTanggal(matchingDates.length > 0 ? matchingDates[0].id : "");
+    setErrors({});
+    setIsFormOpen(true);
+  };
+
   const handleOpenEditForm = (p: Pelanggan) => {
     setEditingPelanggan(p);
     setNama(p.nama);
@@ -1096,82 +1110,136 @@ export default function MasterPelanggan({
         </div>
 
         {/* Tariffs List Section */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="biaya-list-grid">
-          {biayaList.map((b) => (
-            <div 
-              key={b.id}
-              className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col justify-between hover:scale-[1.01] hover:shadow-md transition duration-300 relative group overflow-hidden"
-            >
-              {/* Background Accent Lines */}
-              <div className={`absolute top-0 right-0 w-24 h-24 rounded-full opacity-5 -mr-6 -mt-6 ${
-                b.layanan === "PLN" ? "bg-amber-500" :
-                b.layanan === "PDAM" ? "bg-blue-500" :
-                "bg-purple-500"
-              }`}></div>
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden" id="biaya-table-section">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-150 text-[10px] font-mono font-bold uppercase tracking-wider text-slate-500">
+                  <th className="py-4 px-6">Jenis Tarif & Layanan</th>
+                  <th className="py-4 px-6 text-right">Nominal Bulanan</th>
+                  <th className="py-4 px-6">Nama Pelanggan Terdaftar (Bisa Tambah/Edit/Hapus)</th>
+                  <th className="py-4 px-6 text-center">Aksi Tarif</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {biayaList.map((b) => {
+                  // Find all customers connected to this specific tariff package
+                  const assignedCustomers = pelangganList.filter(p => p.idTarif === b.id);
+                  
+                  return (
+                    <tr key={b.id} className="hover:bg-slate-50/50 transition duration-150">
+                      {/* Jenis Tarif & Layanan */}
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3">
+                          <span className={`p-2 rounded-xl text-xs flex items-center justify-center ${
+                            b.layanan === "PLN" ? "bg-amber-50 text-amber-600 border border-amber-100" :
+                            b.layanan === "PDAM" ? "bg-blue-50 text-blue-600 border border-blue-100" :
+                            "bg-purple-50 text-purple-600 border border-purple-100"
+                          }`}>
+                            {b.layanan === "PLN" && <Zap size={14} fill="currentColor" />}
+                            {b.layanan === "PDAM" && <Droplet size={14} />}
+                            {b.layanan === "WIFI" && <Wifi size={14} />}
+                          </span>
+                          <div>
+                            <div className="font-bold text-slate-800 text-xs">{b.namaPaket}</div>
+                            <div className="text-[10px] text-slate-450 font-mono font-bold uppercase tracking-wide">
+                              ID: {b.id} • {b.layanan}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
 
-              <div className="space-y-4 z-10 w-full">
-                {/* Badge & ID */}
-                <div className="flex justify-between items-center">
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-bold uppercase ${
-                    b.layanan === "PLN" ? "bg-amber-50 text-amber-600 border border-amber-100" :
-                    b.layanan === "PDAM" ? "bg-blue-50 text-blue-600 border border-blue-100" :
-                    "bg-purple-50 text-purple-600 border border-purple-100"
-                  }`}>
-                    {b.layanan === "PLN" && <Zap size={10} fill="currentColor" />}
-                    {b.layanan === "PDAM" && <Droplet size={10} />}
-                    {b.layanan === "WIFI" && <Wifi size={10} />}
-                    {b.layanan}
-                  </span>
+                      {/* Nominal / Harga */}
+                      <td className="py-4 px-6 text-right font-mono text-xs font-black text-slate-755">
+                        {formatRupiah(b.biayaPerBulan)}
+                      </td>
 
-                  <span className="font-mono text-[9px] text-slate-400 font-bold uppercase">{b.id}</span>
-                </div>
+                      {/* Nama Pelanggan Terkait (dengan CRUD) */}
+                      <td className="py-4 px-6">
+                        <div className="space-y-3 py-1">
+                          {assignedCustomers.length > 0 ? (
+                            <div className="flex flex-wrap gap-2 max-w-xl">
+                              {assignedCustomers.map((p) => (
+                                <div 
+                                  key={p.id}
+                                  className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200/85 border border-slate-200 py-1 pl-3 pr-2 rounded-full transition text-[11px] text-slate-700 font-semibold shadow-2xs"
+                                >
+                                  <span>{p.nama}</span>
+                                  <span className="font-mono text-[9px] text-slate-400">({p.id})</span>
+                                  <div className="flex items-center gap-1 border-l border-slate-250 pl-2 ml-1.5">
+                                    <button 
+                                      onClick={() => handleOpenEditForm(p)}
+                                      className="p-0.5 text-indigo-650 hover:bg-indigo-650 hover:text-white rounded-md transition cursor-pointer"
+                                      title={`Ubah data pelanggan ${p.nama}`}
+                                    >
+                                      <Edit3 size={10} />
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        if (confirm(`Apakah Anda yakin ingin menghapus pelanggan "${p.nama}"?`)) {
+                                          onDeletePelanggan(p.id);
+                                        }
+                                      }}
+                                      className="p-0.5 text-rose-600 hover:bg-rose-600 hover:text-white rounded-md transition cursor-pointer"
+                                      title={`Hapus pelanggan ${p.nama}`}
+                                    >
+                                      <Trash2 size={10} />
+                                    </button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-[11px] text-slate-400 italic block">Belum ada pelanggan dengan tarif ini</span>
+                          )}
 
-                {/* Package name details */}
-                <div className="space-y-1">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider font-mono flex items-center gap-1">
-                    <Tag size={12} /> Paket / Tarif
-                  </h4>
-                  <p className="text-sm font-bold text-slate-800 leading-tight pr-4">{b.namaPaket}</p>
-                </div>
+                          {/* Action to immediately ADD a customer pre-filled with this tariff */}
+                          <button
+                            onClick={() => handleOpenCreateFormForTariff(b)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-100 rounded-lg text-[10px] font-bold tracking-wide transition cursor-pointer shadow-2xs"
+                          >
+                            <Plus size={11} /> Tambah Pelanggan Baru
+                          </button>
+                        </div>
+                      </td>
 
-                {/* Price Tag line */}
-                <div className="border-t border-slate-50 pt-4 flex justify-between items-end">
-                  <div className="space-y-0.5">
-                    <span className="text-[10px] text-slate-450 uppercase font-mono tracking-wider font-semibold block">Besaran Bulanan</span>
-                    <p className="text-lg font-bold text-slate-800 font-mono tracking-tight">{formatRupiah(b.biayaPerBulan)}</p>
-                  </div>
+                      {/* Aksi Tarif */}
+                      <td className="py-4 px-6 text-center">
+                        <div className="flex justify-center gap-1.5">
+                          <button 
+                            onClick={() => handleOpenEditBiaya(b)}
+                            className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 rounded-xl transition cursor-pointer"
+                            title="Ubah Tarif"
+                          >
+                            <Edit3 size={13} />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if (confirm(`Apakah Anda yakin ingin menghapus paket tarif "${b.namaPaket}"?`)) {
+                                onDeleteBiaya(b.id);
+                              }
+                            }}
+                            className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 rounded-xl transition cursor-pointer"
+                            title="Hapus Tarif"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
 
-                  {/* Edit & Delete Action Block */}
-                  <div className="flex gap-1">
-                    <button 
-                      onClick={() => handleOpenEditBiaya(b)}
-                      className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 border border-slate-100 rounded-lg transition cursor-pointer"
-                      title="Ubah Tarif"
-                    >
-                      <Edit3 size={13} />
-                    </button>
-                    <button 
-                      onClick={() => {
-                        if (confirm(`Apakah Anda yakin ingin menghapus paket tarif "${b.namaPaket}"?`)) {
-                          onDeleteBiaya(b.id);
-                        }
-                      }}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-slate-50 border border-slate-100 rounded-lg transition cursor-pointer"
-                      title="Hapus Tarif"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-
-          {biayaList.length === 0 && (
-            <div className="col-span-full border border-dashed border-slate-200 p-12 text-center rounded-2xl bg-white text-slate-400 text-xs">
-              Belum ada data paket tarif bulanan tercatat. Tambahkan tarif baru untuk memulai.
-            </div>
-          )}
+                {biayaList.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-12 text-center text-slate-400 text-xs font-medium">
+                      Belum ada data paket tarif bulanan tercatat. Tambahkan tarif baru untuk memulai.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     )}
