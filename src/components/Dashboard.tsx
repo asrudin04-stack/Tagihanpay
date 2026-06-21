@@ -1,6 +1,7 @@
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
+ * Elegant Premium Dashboard for TagihanPay
  */
 
 import React, { useMemo } from "react";
@@ -15,7 +16,12 @@ import {
   FileText,
   Zap,
   Droplet,
-  Wifi
+  Wifi,
+  Sparkles,
+  ArrowRight,
+  TrendingUp,
+  AlertTriangle,
+  Calendar
 } from "lucide-react";
 import { Pelanggan, Transaksi, BiayaTarif, formatRupiah, getMonthLabel } from "../types";
 
@@ -115,161 +121,196 @@ export default function Dashboard({
   }, [monthlyRevenue]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" id="modern-elegant-dashboard">
       
-      {/* Top Banner Accent */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white rounded-2xl p-6 md:p-8 shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden" id="dashboard-hero">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-10 bg-radial-gradient pointer-events-none"></div>
-        <div className="space-y-2 z-10">
-          <h1 className="text-2xl md:text-3xl font-sans font-bold tracking-tight">
-            Selamat Datang di Portal Tagihan Digital!
-          </h1>
-          <p className="text-slate-300 text-sm md:text-base max-w-xl">
-            Sistem tata kelola keuangan pembayaran digital **PLN**, **PDAM**, dan **WIFI**. Kelola data dengan gampang, lincah, dan akurat.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3 z-10">
-          <button 
-            onClick={() => onNavigate("transaksi")}
-            className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 transition text-white font-medium text-sm rounded-xl flex items-center gap-2 shadow-lg shadow-emerald-500/20"
-            id="quick-pay-btn"
-          >
-            <PlusCircle size={16} />
-            Input Pembayaran
-          </button>
-          <button 
-            onClick={() => onNavigate("pelanggan")}
-            className="px-5 py-2.5 bg-slate-700/80 hover:bg-slate-700 transition text-white border border-slate-600/50 font-medium text-sm rounded-xl flex items-center gap-2"
-            id="quick-add-client-btn"
-          >
-            <Users size={16} />
-            Data Pelanggan
-          </button>
+      {/* Top Banner Accent - Gorgeous Minimal Editorial Aesthetic */}
+      <div className="relative bg-slate-950 text-white rounded-3xl p-6 md:p-8 shadow-xl overflow-hidden border border-slate-800" id="dashboard-hero">
+        {/* Abstract Background Overlays */}
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950/90 [mask-image:linear-gradient(to_bottom,white,transparent)] opacity-95"></div>
+        <div className="absolute -right-16 -top-16 w-80 h-80 bg-indigo-500/15 rounded-full blur-3xl"></div>
+        <div className="absolute right-1/4 -bottom-12 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl"></div>
+        
+        {/* Subtle dot pattern background */}
+        <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:16px_16px] opacity-70 pointer-events-none"></div>
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+          <div className="space-y-3.5 max-w-2xl">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-semibold text-indigo-200 border border-white/10 tracking-wide font-mono">
+              <Sparkles size={12} className="text-indigo-400 animate-spin-slow" />
+              SISTEM MULTI-BILLING LOKET AKTIF
+            </div>
+            
+            <h1 className="text-2xl md:text-3.5xl font-sans font-black tracking-tight leading-tight">
+              Akses Kendali Keuangan <br/>
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-200 via-white to-emerald-200">
+                Loket Pembayaran Digital
+              </span>
+            </h1>
+            
+            <p className="text-slate-300 text-xs md:text-sm leading-relaxed font-medium">
+              Selamat datang kembali. Anda dapat mengolah rincian transaksi pembayaran digital untuk layanan <span className="text-white font-bold underline decoration-amber-400 decoration-2">Listrik PLN</span>, <span className="text-white font-bold underline decoration-blue-400 decoration-2">Air PDAM</span>, dan <span className="text-white font-bold underline decoration-purple-400 decoration-2">Internet WIFI</span> pelanggan dalam satu konsol yang ringkas.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3 shrink-0 self-start lg:self-center">
+            <button 
+              onClick={() => onNavigate("transaksi")}
+              className="px-5 py-3 bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition-all text-white font-bold text-xs rounded-2xl flex items-center gap-2 shadow-lg shadow-indigo-600/30 cursor-pointer"
+              id="quick-pay-btn"
+            >
+              <PlusCircle size={15} />
+              Input Pembayaran Baru
+            </button>
+            <button 
+              onClick={() => onNavigate("pelanggan")}
+              className="px-5 py-3 bg-white/10 hover:bg-white/15 active:scale-95 transition-all text-white border border-white/10 font-bold text-xs rounded-2xl flex items-center gap-2 cursor-pointer"
+              id="quick-add-client-btn"
+            >
+              <Users size={15} />
+              Data Pelanggan
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* KPI Stats Block */}
+      {/* KPI Stats Block - Elegant Minimalist White Cards with Bold Accents */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5" id="stats-grid">
         
-        {/* KPI: Total Pendapatan */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs flex items-center justify-between hover:shadow-md transition duration-300">
-          <div className="space-y-1">
-            <p className="text-xs font-mono text-slate-400 uppercase tracking-wider">Total Pendapatan</p>
-            <h3 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">
+        {/* KPI 1: Total Pendapatan */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs flex items-center justify-between hover:shadow-md hover:border-slate-200 transition duration-300 relative overflow-hidden group">
+          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-emerald-500 rounded-l-2xl"></div>
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-mono text-slate-400 font-black uppercase tracking-wider block">Total Pendapatan</span>
+            <h3 className="text-2xl font-black text-slate-850 tracking-tight font-mono">
               {formatRupiah(totalPendapatan)}
             </h3>
-            <p className="text-xs text-emerald-500 flex items-center gap-1">
-              <CheckCircle2 size={12} /> Terbayar Lunas
-            </p>
+            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
+              <CheckCircle2 size={11} className="text-emerald-500" /> Terbayar Lunas ({lunasCount} Tx)
+            </span>
           </div>
-          <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-500">
-            <Wallet size={24} />
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:scale-110 transition duration-300">
+            <Wallet size={20} />
           </div>
         </div>
 
-        {/* KPI: Total Tunggakan */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs flex items-center justify-between hover:shadow-md transition duration-300">
-          <div className="space-y-1">
-            <p className="text-xs font-mono text-slate-400 uppercase tracking-wider">Total Tunggakan</p>
-            <h3 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">
+        {/* KPI 2: Total Tunggakan */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs flex items-center justify-between hover:shadow-md hover:border-slate-200 transition duration-300 relative overflow-hidden group">
+          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-rose-500 rounded-l-2xl"></div>
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-mono text-slate-400 font-black uppercase tracking-wider block">Total Tunggakan</span>
+            <h3 className="text-2xl font-black text-slate-850 tracking-tight font-mono">
               {formatRupiah(totalTunggakan)}
             </h3>
-            <p className="text-xs text-amber-500 flex items-center gap-1">
-              <Clock size={12} fill="currentColor" className="text-white" /> {arrearsList.length} Tagihan Belum Bayar
-            </p>
+            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md">
+              <Clock size={11} className="text-rose-500" /> {tunggakanCount} Tagihan Belum Lunas
+            </span>
           </div>
-          <div className="p-3 bg-amber-50 rounded-2xl text-amber-500">
-            <Clock size={24} />
+          <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl group-hover:scale-110 transition duration-300">
+            <AlertTriangle size={20} className="text-rose-500" />
           </div>
         </div>
 
-        {/* KPI: Jumlah Pelanggan */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs flex items-center justify-between hover:shadow-md transition duration-300">
-          <div className="space-y-1">
-            <p className="text-xs font-mono text-slate-400 uppercase tracking-wider">Jumlah Pelanggan</p>
-            <h3 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">
-              {pelangganList.length} <span className="text-sm font-normal text-slate-500">Jiwa</span>
+        {/* KPI 3: Jumlah Pelanggan */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs flex items-center justify-between hover:shadow-md hover:border-slate-200 transition duration-300 relative overflow-hidden group">
+          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-500 rounded-l-2xl"></div>
+          <div className="space-y-1.5">
+            <span className="text-[10px] font-mono text-slate-400 font-black uppercase tracking-wider block">Masyarakat Terdaftar</span>
+            <h3 className="text-2xl font-black text-slate-850 tracking-tight">
+              {pelangganList.length} <span className="text-xs font-bold text-slate-450 font-mono">Pelanggan</span>
             </h3>
-            <p className="text-xs text-indigo-500 flex items-center gap-1">
-              <Activity size={12} /> Pelanggan Aktif Terdaftar
-            </p>
+            <span className="inline-flex items-center gap-1 text-[10.5px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+              <Activity size={11} className="text-indigo-500" /> Layanan Aktif Terpantau
+            </span>
           </div>
-          <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-500">
-            <Users size={24} />
+          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl group-hover:scale-110 transition duration-300">
+            <Users size={20} />
           </div>
         </div>
 
-        {/* KPI: Rasio Pelunasan */}
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs flex items-center justify-between hover:shadow-md transition duration-300">
-          <div className="space-y-1 w-full mr-2">
-            <p className="text-xs font-mono text-slate-400 uppercase tracking-wider">Rasio Pelunasan</p>
-            <div className="flex items-baseline justify-between">
-              <h3 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">
-                {settlementRate}%
-              </h3>
-              <span className="text-xs font-medium text-slate-500">Target 100%</span>
+        {/* KPI 4: Rasio Pelunasan */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs flex items-center justify-between hover:shadow-md hover:border-slate-200 transition duration-300 relative overflow-hidden group">
+          <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-950 rounded-l-2xl"></div>
+          <div className="space-y-2 w-full">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-mono text-slate-400 font-black uppercase tracking-wider block">Rasio Pelunasan</span>
+              <span className="text-[11px] font-bold text-slate-800 font-mono">{settlementRate}%</span>
             </div>
+            
             {/* Custom mini progress bar */}
-            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-2">
+            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
               <div 
-                className="bg-indigo-600 h-full rounded-full transition-all duration-1000"
+                className="bg-indigo-650 h-full rounded-full transition-all duration-1000"
                 style={{ width: `${settlementRate}%` }}
               ></div>
             </div>
-          </div>
-          <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-500 h-fit self-center">
-            <Activity size={24} />
+            
+            <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold">
+              <span>Keberhasilan loket</span>
+              <span className="text-slate-500">Target 100%</span>
+            </div>
           </div>
         </div>
 
       </div>
 
-      {/* Main Charts & Breakdown Bento Row */}
+      {/* Main Charts & Breakdown Bento Row - Styled Elegantly */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="dashboard-graphics">
         
-        {/* Custom Monthly Revenue Bar Chart */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm lg:col-span-2 space-y-6">
-          <div className="flex justify-between items-center">
+        {/* Custom Monthly Revenue Bar Chart with Elegant Mesh Layout */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs lg:col-span-2 space-y-6 flex flex-col justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="space-y-1">
-              <h4 className="text-sm font-bold text-slate-800">Tren Pendapatan Bulanan</h4>
-              <p className="text-xs text-slate-500">Arus kas pendapatan yang masuk di tahun 2026</p>
+              <div className="flex items-center gap-1.5 text-indigo-600 font-bold text-xs uppercase tracking-wide">
+                <TrendingUp size={15} />
+                <span>Analisa Grafik</span>
+              </div>
+              <h4 className="text-base font-bold text-slate-850">Tren Pendapatan Bulanan</h4>
+              <p className="text-xs text-slate-500">Arus kas pendapatan riil bulanan yang masuk sepanjang tahun 2026.</p>
             </div>
-            <span className="px-2.5 py-1 text-xs font-mono text-indigo-600 bg-indigo-50 rounded-md font-semibold">Tahun Buku 2026</span>
+            <span className="px-3 py-1 text-[10px] font-bold bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full font-mono max-w-fit">
+              TAHUN AGARAN 2026
+            </span>
           </div>
 
-          {/* Bar Diagram Platform using CSS/SVG */}
-          <div className="relative pt-4">
-            <div className="h-64 flex items-end justify-between gap-3 md:gap-6 px-2 border-b border-slate-100">
+          {/* Bar Diagram Platform using CSS/SVG with custom visual details */}
+          <div className="relative pt-6">
+            
+            {/* Chart Guide Guidelines Grid */}
+            <div className="absolute inset-x-0 top-6 bottom-8 flex flex-col justify-between pointer-events-none opacity-40">
+              <div className="border-b border-dashed border-slate-200 w-full h-0"></div>
+              <div className="border-b border-dashed border-slate-200 w-full h-0"></div>
+              <div className="border-b border-dashed border-slate-200 w-full h-0"></div>
+              <div className="border-b border-slate-250 w-full h-0"></div>
+            </div>
+
+            <div className="h-60 flex items-end justify-between gap-3 sm:gap-6 px-1 relative z-10">
               {monthlyRevenue.map((item) => {
-                const barHeight = item.total > 0 ? (item.total / maxRevenue) * 100 : 5;
+                const barHeight = item.total > 0 ? (item.total / maxRevenue) * 100 : 3;
                 return (
                   <div key={item.periode} className="flex-1 flex flex-col items-center group relative h-full justify-end">
                     
                     {/* Tooltip on hover */}
-                    <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-xs py-1.5 px-3 rounded-lg shadow-lg pointer-events-none z-20 flex flex-col items-center whitespace-nowrap">
-                      <span className="font-semibold text-[11px] text-slate-300">{item.label}</span>
-                      <span className="text-emerald-400 font-mono font-bold mt-0.5">{formatRupiah(item.total)}</span>
+                    <div className="absolute bottom-full mb-2.5 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-xs py-1.5 px-3 rounded-lg shadow-xl pointer-events-none z-25 flex flex-col items-center whitespace-nowrap">
+                      <span className="font-semibold text-[10px] text-slate-350">{item.label}</span>
+                      <span className="text-emerald-400 font-mono font-black mt-0.5">{formatRupiah(item.total)}</span>
                       <div className="w-2 h-2 bg-slate-900 rotate-45 -mb-1 mt-1"></div>
                     </div>
 
                     {/* Interactive Animated Bar */}
-                    <div 
-                      className="w-full bg-slate-100 rounded-t-lg group-hover:bg-indigo-100 active:scale-95 transition-all duration-500 flex flex-col justify-end overflow-hidden" 
-                      style={{ height: `100%` }}
-                    >
+                    <div className="w-full bg-slate-50 border border-slate-100 rounded-t-xl group-hover:border-indigo-200 group-hover:bg-indigo-50/50 active:scale-95 transition-all duration-300 h-full flex flex-col justify-end overflow-hidden">
                       <div 
-                        className="w-full bg-indigo-600 hover:bg-indigo-500 rounded-t-lg transition-all duration-1000 ease-out flex items-center justify-center text-[10px] text-white font-mono"
+                        className="w-full bg-indigo-650 hover:bg-indigo-550 rounded-t-lg transition-all duration-1000 ease-out flex items-center justify-center text-[9.5px] text-white font-mono min-h-[4px]"
                         style={{ height: `${barHeight}%` }}
                       >
-                        {item.total > 0 && barHeight > 18 && (
-                          <span className="hidden md:inline rotate-90 md:rotate-0 font-semibold mb-1">
-                            {(item.total / 1000).toFixed(0)}k
+                        {item.total > 0 && barHeight > 15 && (
+                          <span className="hidden sm:inline font-bold rotate-90 sm:rotate-0 tracking-tight">
+                            Rp {(item.total / 1000).toFixed(0)}k
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <span className="text-[10px] md:text-xs text-slate-500 mt-2 font-medium max-w-[64px] text-center truncate">
+                    <span className="text-[10px] font-bold text-slate-500 mt-2.5 font-mono">
                       {item.label.split(" ")[0]}
                     </span>
                   </div>
@@ -277,38 +318,37 @@ export default function Dashboard({
               })}
             </div>
 
-            {/* Zero label helper */}
-            <div className="absolute left-0 bottom-0 text-[10px] text-slate-400 font-mono pl-1 pb-1">
-              Rp 0
+            {/* Scale boundaries text info */}
+            <div className="flex justify-between items-center text-[9px] font-mono text-slate-400 mt-5 pt-2 border-t border-slate-100">
+              <span className="font-semibold">Titik Nol: Rp 0</span>
+              <span className="text-indigo-600 font-bold">Volume Puncak: {formatRupiah(maxRevenue)}</span>
             </div>
-            {/* Max label helper */}
-            <div className="absolute left-0 top-0 text-[10px] text-indigo-600 font-mono font-semibold pl-1">
-              Max: {formatRupiah(maxRevenue)}
-            </div>
+
           </div>
         </div>
 
-        {/* Service Type Breakdown and Statistics Card */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between space-y-6">
+        {/* Service Type Distribution Bento Card for Premium UI Feel */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs flex flex-col justify-between space-y-5">
           <div className="space-y-1">
-            <h4 className="text-sm font-bold text-slate-800">Distribusi Tagihan Masuk</h4>
-            <p className="text-xs text-slate-500">Porsi pendapatan per jenis layanan s/d hari ini</p>
+            <span className="text-[10px] font-mono font-black uppercase text-slate-400 tracking-wider block">Analisa Layanan</span>
+            <h4 className="text-base font-bold text-slate-850">Proporsi Kas Masuk</h4>
+            <p className="text-xs text-slate-500">Volume setoran dana berdasarkan kategori utama.</p>
           </div>
 
           <div className="space-y-4 my-auto">
             
-            {/* PLN Item */}
-            <div className="space-y-1.5">
+            {/* PLN Category Item */}
+            <div className="space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-semibold text-slate-700 flex items-center gap-1.5">
-                  <span className="inline-flex p-1.5 bg-amber-50 text-amber-500 rounded-md">
-                    <Zap size={14} />
+                <span className="font-bold text-slate-700 flex items-center gap-2">
+                  <span className="inline-flex p-1.5 bg-amber-50 text-amber-550 rounded-lg border border-amber-100">
+                    <Zap size={13} fill="currentColor" />
                   </span>
                   Listrik PLN
                 </span>
-                <span className="font-bold text-slate-800 font-mono">{formatRupiah(serviceStats.PLN)}</span>
+                <span className="font-black text-slate-800 font-mono tracking-tight">{formatRupiah(serviceStats.PLN)}</span>
               </div>
-              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div className="w-full bg-slate-50 border border-slate-100 h-2.5 rounded-full overflow-hidden p-0.5">
                 <div 
                   className="bg-amber-400 h-full rounded-full transition-all duration-1000"
                   style={{ width: `${totalPendapatan > 0 ? (serviceStats.PLN / totalPendapatan) * 100 : 0}%` }}
@@ -316,18 +356,18 @@ export default function Dashboard({
               </div>
             </div>
 
-            {/* PDAM Item */}
-            <div className="space-y-1.5">
+            {/* PDAM Category Item */}
+            <div className="space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-semibold text-slate-700 flex items-center gap-1.5">
-                  <span className="inline-flex p-1.5 bg-blue-50 text-blue-500 rounded-md">
-                    <Droplet size={14} />
+                <span className="font-bold text-slate-700 flex items-center gap-2">
+                  <span className="inline-flex p-1.5 bg-blue-50 text-blue-550 rounded-lg border border-blue-100">
+                    <Droplet size={13} fill="currentColor" />
                   </span>
                   Air Bersih PDAM
                 </span>
-                <span className="font-bold text-slate-800 font-mono">{formatRupiah(serviceStats.PDAM)}</span>
+                <span className="font-black text-slate-800 font-mono tracking-tight">{formatRupiah(serviceStats.PDAM)}</span>
               </div>
-              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div className="w-full bg-slate-50 border border-slate-100 h-2.5 rounded-full overflow-hidden p-0.5">
                 <div 
                   className="bg-blue-500 h-full rounded-full transition-all duration-1000"
                   style={{ width: `${totalPendapatan > 0 ? (serviceStats.PDAM / totalPendapatan) * 100 : 0}%` }}
@@ -335,18 +375,18 @@ export default function Dashboard({
               </div>
             </div>
 
-            {/* WIFI Item */}
-            <div className="space-y-1.5">
+            {/* WIFI Category Item */}
+            <div className="space-y-2">
               <div className="flex justify-between items-center text-xs">
-                <span className="font-semibold text-slate-700 flex items-center gap-1.5">
-                  <span className="inline-flex p-1.5 bg-purple-50 text-purple-500 rounded-md">
-                    <Wifi size={14} />
+                <span className="font-bold text-slate-700 flex items-center gap-2">
+                  <span className="inline-flex p-1.5 bg-purple-50 text-purple-550 rounded-lg border border-purple-100">
+                    <Wifi size={13} />
                   </span>
                   Internet WIFI
                 </span>
-                <span className="font-bold text-slate-800 font-mono">{formatRupiah(serviceStats.WIFI)}</span>
+                <span className="font-black text-slate-800 font-mono tracking-tight">{formatRupiah(serviceStats.WIFI)}</span>
               </div>
-              <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div className="w-full bg-slate-50 border border-slate-100 h-2.5 rounded-full overflow-hidden p-0.5">
                 <div 
                   className="bg-purple-500 h-full rounded-full transition-all duration-1000"
                   style={{ width: `${totalPendapatan > 0 ? (serviceStats.WIFI / totalPendapatan) * 100 : 0}%` }}
@@ -356,11 +396,11 @@ export default function Dashboard({
 
           </div>
 
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span>Uptime Layanan:</span>
-            <span className="font-mono text-emerald-500 font-semibold flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-              Aktif 100%
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 font-semibold font-mono">
+            <span>UPTIME LOKET</span>
+            <span className="text-emerald-500 flex items-center gap-1 font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              99.9% LIVE SECURE
             </span>
           </div>
 
@@ -368,87 +408,101 @@ export default function Dashboard({
 
       </div>
 
-      {/* Row: Recent Transactions & Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Row: Recent Transactions & Urgent Deadlines / Tasks */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="monitoring-flow">
 
-        {/* Recent Transactions Panel */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+        {/* Recent Transactions List Panel */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs space-y-4 flex flex-col justify-between">
           <div className="flex justify-between items-center">
-            <h4 className="text-sm font-bold text-slate-800">5 Pembayaran Terakhir</h4>
+            <div className="space-y-0.5">
+              <h4 className="text-sm font-bold text-slate-850">Aktivitas 5 Pembayaran Terakhir</h4>
+              <p className="text-[11px] text-slate-400 font-medium">Histori pencatatan invoice terbaru lunas cetak kwitansi.</p>
+            </div>
+            
             <button 
               onClick={() => onNavigate("transaksi")} 
-              className="text-xs text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 cursor-pointer transition"
             >
-              Lihat Riwayat <ArrowUpRight size={14} />
+              Laporan Rinci <ArrowUpRight size={14} />
             </button>
           </div>
 
-          <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-100">
+          <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100 flex-1 mt-2">
             {transaksiList.slice(0, 5).map((tx) => (
-              <div key={tx.id} className="p-3.5 flex justify-between items-center bg-white hover:bg-slate-50 transition">
+              <div key={tx.id} className="p-3.5 flex justify-between items-center bg-white hover:bg-slate-50/70 transition">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-xl text-xs font-semibold ${
-                    tx.layanan === "PLN" ? "bg-amber-50 text-amber-600" :
-                    tx.layanan === "PDAM" ? "bg-blue-50 text-blue-600" :
-                    "bg-purple-50 text-purple-600"
+                  <div className={`p-2.5 rounded-xl text-xs font-semibold shrink-0 ${
+                    tx.layanan === "PLN" ? "bg-amber-50 text-amber-600 border border-amber-100" :
+                    tx.layanan === "PDAM" ? "bg-blue-50 text-blue-600 border border-blue-100" :
+                    "bg-purple-50 text-purple-600 border border-purple-100"
                   }`}>
-                    {tx.layanan === "PLN" && <Zap size={16} />}
-                    {tx.layanan === "PDAM" && <Droplet size={16} />}
-                    {tx.layanan === "WIFI" && <Wifi size={16} />}
+                    {tx.layanan === "PLN" && <Zap size={14} fill="currentColor" />}
+                    {tx.layanan === "PDAM" && <Droplet size={14} fill="currentColor" />}
+                    {tx.layanan === "WIFI" && <Wifi size={14} />}
                   </div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-800">{tx.namaPelanggan}</h5>
-                    <p className="text-[10px] text-slate-400 font-mono">
-                      {tx.id} • {tx.periode} • {tx.metodePembayaran}
+                  <div className="min-w-0">
+                    <h5 className="text-xs font-bold text-slate-850 truncate">{tx.namaPelanggan}</h5>
+                    <p className="text-[10px] text-slate-400 font-mono flex items-center gap-1 mt-0.5 truncate">
+                      <span className="font-bold text-indigo-900 bg-indigo-50 px-1 rounded-sm">{tx.id.split("-").pop()}</span>
+                      <span>•</span>
+                      <span>{tx.periode}</span>
+                      <span>•</span>
+                      <span className="font-semibold text-slate-500 uppercase">{tx.metodePembayaran}</span>
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs font-bold text-slate-800 block font-mono">
+                <div className="text-right shrink-0">
+                  <span className="text-xs font-black text-slate-850 block font-mono">
                     {formatRupiah(tx.jumlahBayar)}
                   </span>
-                  <span className="text-[9px] text-slate-500">
+                  <span className="text-[9px] font-bold font-mono text-slate-400 bg-slate-50 border border-slate-100 p-0.5 px-1.5 rounded-md mt-0.5 inline-block">
                     {new Date(tx.tanggalBayar).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' })}
                   </span>
                 </div>
               </div>
             ))}
             {transaksiList.length === 0 && (
-              <div className="p-8 text-center text-slate-400 text-xs">
-                Belum ada transaksi pembayaran yang tercatat.
+              <div className="p-8 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-2 h-full min-h-[220px]">
+                <FileText size={24} className="text-slate-300" />
+                <span>Belum ada transaksi pembayaran yang tercatat dalam log lokal.</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* High Priority Alerts & Quick Action Launcher */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
+        {/* High Priority Alerts & Active Demands */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs space-y-4 flex flex-col justify-between">
           <div className="flex justify-between items-center">
-            <h4 className="text-sm font-bold text-slate-800">Tunggakan Urgent (Mei / Juni)</h4>
-            <span className="px-2 py-0.5 text-[10px] font-mono font-semibold bg-rose-50 text-rose-500 rounded-md">
-              Awas Denda
+            <div className="space-y-0.5">
+              <h4 className="text-sm font-bold text-slate-850">Tunggakan Kolektif Urgensi Tinggi</h4>
+              <p className="text-[11px] text-slate-400 font-medium font-sans">Lacak tunggakan aktif yang harus segera diselesaikan untuk menghindari denda / pemutusan.</p>
+            </div>
+            <span className="px-2.5 py-0.5 text-[9px] font-mono font-bold bg-rose-50 border border-rose-100 text-rose-600 rounded-md uppercase">
+              SIAGA DENDA
             </span>
           </div>
 
-          <div className="space-y-3 max-h-[290px] overflow-y-auto pr-1">
+          <div className="space-y-2.5 max-h-[280px] overflow-y-auto pr-1 flex-1 mt-2">
             {arrearsList.slice(0, 5).map((item, index) => (
-              <div key={`${item.pelanggan.id}-${item.periode}-${index}`} className="p-3 bg-rose-50/50 rounded-xl border border-rose-100/50 flex justify-between items-center hover:bg-rose-50 transition duration-300">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
-                  <div>
-                    <h5 className="text-xs font-bold text-slate-800">{item.pelanggan.nama}</h5>
-                    <p className="text-[10px] text-slate-500">
-                      Tunggakan **{item.pelanggan.layanan}** untuk periode **{item.periode}**
+              <div key={`${item.pelanggan.id}-${item.periode}-${index}`} className="p-3 bg-rose-50/20 rounded-xl border border-rose-100/30 flex justify-between items-center hover:bg-rose-50/55 transition duration-350">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0"></div>
+                  <div className="min-w-0">
+                    <h5 className="text-xs font-bold text-slate-850 truncate">{item.pelanggan.nama}</h5>
+                    <p className="text-[10px] text-slate-550 flex items-center gap-1.5 mt-0.5 font-sans">
+                      <span className="font-extrabold text-[#701a1a] bg-rose-50 border border-rose-100 px-1 rounded-sm">{item.pelanggan.layanan}</span>
+                      <span>Periode:</span>
+                      <span className="font-mono text-slate-600 font-medium">{item.periode}</span>
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-rose-600 font-mono">
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-xs font-black text-rose-700 font-mono">
                     {formatRupiah(item.perkiraanBiaya)}
                   </span>
                   <button 
                     onClick={() => onQuickPayment(item.pelanggan.id)}
-                    className="p-1.5 bg-rose-600 font-semibold text-[10px] tracking-wide text-white hover:bg-rose-700 rounded-md flex items-center justify-center transition"
+                    className="p-1.5 px-3 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-bold text-[10px] rounded-lg flex items-center justify-center transition cursor-pointer"
                     title="Bayar Sekarang"
                   >
                     Bayar
@@ -457,18 +511,22 @@ export default function Dashboard({
               </div>
             ))}
             {arrearsList.length === 0 && (
-              <div className="p-8 text-center bg-emerald-50/20 text-emerald-600 rounded-xl border border-dashed border-emerald-100 text-xs flex flex-col items-center gap-2">
-                <CheckCircle2 size={24} />
-                <span>Fantastis! Seluruh pelanggan lunas membayar tagihan.</span>
+              <div className="p-8 text-center bg-emerald-50/20 text-emerald-600 rounded-2xl border border-dashed border-emerald-150 text-xs flex flex-col items-center justify-center gap-2.5 h-full min-h-[220px]">
+                <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-full">
+                  <CheckCircle2 size={24} fill="currentColor" className="text-white" />
+                </div>
+                <span className="font-bold text-slate-800">Seluruh Tagihan Lunas Terbayar!</span>
+                <span className="text-[10.5px] text-slate-450 max-w-[280px]">Kerja bagus, tidak ada denda keterlambatan atau tunggakan aktif terdeteksi saat ini.</span>
               </div>
             )}
+            
             {arrearsList.length > 5 && (
               <div className="text-center pt-2">
                 <button 
                   onClick={() => onNavigate("transaksi")}
-                  className="text-xs text-slate-500 font-medium hover:text-indigo-600 hover:underline"
+                  className="text-xs font-bold text-slate-500 hover:text-indigo-600 hover:underline cursor-pointer"
                 >
-                  +{arrearsList.length - 5} Tunggakan Lainnya. Lihat di Menu Tagihan Belum Lunas
+                  +{arrearsList.length - 5} Tunggakan Lainnya Tersisa. Lacak Selengkapnya di Menu Tagihan
                 </button>
               </div>
             )}
