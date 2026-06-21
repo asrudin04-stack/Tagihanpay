@@ -146,8 +146,12 @@ export default function TransaksiView({
           
           let rate = 0;
           if (customer) {
-            const standardRateObj = customer.idTarif ? biayaList.find(b => b.id === customer.idTarif) : biayaList.find(b => b.layanan === customer.layanan);
-            rate = standardRateObj ? standardRateObj.biayaPerBulan : 120000;
+            if (customer.nominalTarif !== undefined && customer.nominalTarif !== null && customer.nominalTarif >= 0) {
+              rate = customer.nominalTarif;
+            } else {
+              const standardRateObj = customer.idTarif ? biayaList.find(b => b.id === customer.idTarif) : biayaList.find(b => b.layanan === customer.layanan);
+              rate = standardRateObj ? standardRateObj.biayaPerBulan : 120000;
+            }
           }
           const jBayar = Number(item.jumlahBayar || item.jumlah_bayar || item.nominal || rate);
           const met = String(item.metodePembayaran || item.metode || "Tunai").trim().toLowerCase() === "transfer" ? "Transfer" : "Tunai" as 'Tunai' | 'Transfer';
@@ -231,8 +235,12 @@ export default function TransaksiView({
           
           let rate = 0;
           if (customer) {
-            const standardRateObj = customer.idTarif ? biayaList.find(b => b.id === customer.idTarif) : biayaList.find(b => b.layanan === customer.layanan);
-            rate = standardRateObj ? standardRateObj.biayaPerBulan : 120000;
+            if (customer.nominalTarif !== undefined && customer.nominalTarif !== null && customer.nominalTarif >= 0) {
+              rate = customer.nominalTarif;
+            } else {
+              const standardRateObj = customer.idTarif ? biayaList.find(b => b.id === customer.idTarif) : biayaList.find(b => b.layanan === customer.layanan);
+              rate = standardRateObj ? standardRateObj.biayaPerBulan : 120000;
+            }
           }
 
           const rawJumlah = cleanedCols[jBayarIdx] || "";
@@ -385,14 +393,18 @@ export default function TransaksiView({
     return pelangganList.find((p) => p.id === selectedCustomerId);
   }, [selectedCustomerId, pelangganList]);
 
-  // Autofill standard cost of chosen client's package
+  // Autofill standard/custom cost of chosen client
   useEffect(() => {
     if (selectedCustomerInfo) {
-      const standardRate = selectedCustomerInfo.idTarif ? biayaList.find((b) => b.id === selectedCustomerInfo.idTarif) : biayaList.find((b) => b.layanan === selectedCustomerInfo.layanan);
-      if (standardRate) {
-        setJumlahBayar(standardRate.biayaPerBulan);
+      if (selectedCustomerInfo.nominalTarif !== undefined && selectedCustomerInfo.nominalTarif !== null && selectedCustomerInfo.nominalTarif >= 0) {
+        setJumlahBayar(selectedCustomerInfo.nominalTarif);
       } else {
-        setJumlahBayar(0);
+        const standardRate = selectedCustomerInfo.idTarif ? biayaList.find((b) => b.id === selectedCustomerInfo.idTarif) : biayaList.find((b) => b.layanan === selectedCustomerInfo.layanan);
+        if (standardRate) {
+          setJumlahBayar(standardRate.biayaPerBulan);
+        } else {
+          setJumlahBayar(0);
+        }
       }
     } else {
       setJumlahBayar(0);
@@ -462,9 +474,14 @@ export default function TransaksiView({
     }[] = [];
 
     pelangganList.forEach((p) => {
-      // Find matching standard tarif
-      const rateObj = p.idTarif ? biayaList.find((b) => b.id === p.idTarif) : biayaList.find((b) => b.layanan === p.layanan);
-      const nominal = rateObj ? rateObj.biayaPerBulan : 120000;
+      // Find matching tarif, prioritizing custom nominal
+      let nominal = 120000;
+      if (p.nominalTarif !== undefined && p.nominalTarif !== null && p.nominalTarif >= 0) {
+        nominal = p.nominalTarif;
+      } else {
+        const rateObj = p.idTarif ? biayaList.find((b) => b.id === p.idTarif) : biayaList.find((b) => b.layanan === p.layanan);
+        nominal = rateObj ? rateObj.biayaPerBulan : 120000;
+      }
 
       activePeriods.forEach((period) => {
         // Check if customer paid this period for their service

@@ -73,7 +73,9 @@ export default function LaporanView({
     if (!client) return [];
 
     const list: { period: string; billingAmount: number }[] = [];
-    const standardRate = (client.idTarif ? biayaList.find((b) => b.id === client.idTarif) : biayaList.find((b) => b.layanan === client.layanan))?.biayaPerBulan || 100000;
+    const standardRate = client.nominalTarif !== undefined && client.nominalTarif !== null && client.nominalTarif >= 0
+      ? client.nominalTarif
+      : (client.idTarif ? biayaList.find((b) => b.id === client.idTarif) : biayaList.find((b) => b.layanan === client.layanan))?.biayaPerBulan || 100000;
 
     activePeriods.forEach((period) => {
       const isPaid = transaksiList.some(
@@ -116,8 +118,13 @@ export default function LaporanView({
     }[] = [];
 
     pelangganList.forEach((p) => {
-      const rateObj = p.idTarif ? biayaList.find((b) => b.id === p.idTarif) : biayaList.find((b) => b.layanan === p.layanan);
-      const nominal = rateObj ? rateObj.biayaPerBulan : 120000;
+      let nominal = 120000;
+      if (p.nominalTarif !== undefined && p.nominalTarif !== null && p.nominalTarif >= 0) {
+        nominal = p.nominalTarif;
+      } else {
+        const rateObj = p.idTarif ? biayaList.find((b) => b.id === p.idTarif) : biayaList.find((b) => b.layanan === p.layanan);
+        nominal = rateObj ? rateObj.biayaPerBulan : 120000;
+      }
 
       activePeriods.forEach((period) => {
         const isPaid = transaksiList.some(

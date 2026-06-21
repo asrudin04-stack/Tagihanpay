@@ -66,6 +66,7 @@ export default function MasterPelanggan({
   const [noMeter, setNoMeter] = useState("");
   const [idTarif, setIdTarif] = useState("");
   const [idTanggal, setIdTanggal] = useState("");
+  const [nominalTarif, setNominalTarif] = useState<number | "">("");
 
   // Error validations
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -135,9 +136,15 @@ export default function MasterPelanggan({
       const curTariff = biayaList.find(b => b.id === idTarif);
       if (!curTariff || curTariff.layanan !== layanan) {
         setIdTarif(matchingTariffs[0].id);
+        if (!editingPelanggan) {
+          setNominalTarif(matchingTariffs[0].biayaPerBulan);
+        }
       }
     } else {
       setIdTarif("");
+      if (!editingPelanggan) {
+        setNominalTarif("");
+      }
     }
 
     // Check available due dates for the chosen category
@@ -150,7 +157,7 @@ export default function MasterPelanggan({
     } else {
       setIdTanggal("");
     }
-  }, [layanan, biayaList, tanggalList]);
+  }, [layanan, biayaList, tanggalList, editingPelanggan]);
 
   // --- IMPORT STATE & HELPERS FOR EXCEL/CSV ---
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -419,6 +426,7 @@ export default function MasterPelanggan({
     setNoMeter("");
     setIdTarif("");
     setIdTanggal("");
+    setNominalTarif("");
     setErrors({});
     setIsFormOpen(true);
   };
@@ -431,6 +439,7 @@ export default function MasterPelanggan({
     setLayanan(b.layanan);
     setNoMeter("");
     setIdTarif(b.id);
+    setNominalTarif(b.biayaPerBulan);
     const matchingDates = tanggalList.filter(t => t.layanan === b.layanan);
     setIdTanggal(matchingDates.length > 0 ? matchingDates[0].id : "");
     setErrors({});
@@ -445,6 +454,7 @@ export default function MasterPelanggan({
     setLayanan(p.layanan);
     setNoMeter(p.noMeter);
     setIdTarif(p.idTarif || "");
+    setNominalTarif(p.nominalTarif !== undefined ? p.nominalTarif : "");
     setIdTanggal(p.idTanggal || "");
     setErrors({});
     setIsFormOpen(true);
@@ -465,6 +475,9 @@ export default function MasterPelanggan({
                            layanan === "PDAM" ? "Nomor rekening air wajib diisi" :
                            "Nomor Pelanggan WIFI wajib diisi";
     }
+    if (nominalTarif === "" || isNaN(Number(nominalTarif)) || Number(nominalTarif) < 0) {
+      tempErrors.nominalTarif = "Nominal Tarif bulanan harus diisi dengan angka valid >= Rp 0";
+    }
     setErrors(tempErrors);
     return Object.keys(tempErrors).length === 0;
   };
@@ -483,7 +496,8 @@ export default function MasterPelanggan({
         layanan,
         noMeter: noMeter.trim(),
         idTarif: idTarif || undefined,
-        idTanggal: idTanggal || undefined
+        idTanggal: idTanggal || undefined,
+        nominalTarif: nominalTarif !== "" ? Number(nominalTarif) : undefined
       });
     } else {
       // Create action
@@ -496,7 +510,8 @@ export default function MasterPelanggan({
         layanan,
         noMeter: noMeter.trim(),
         idTarif: idTarif || undefined,
-        idTanggal: idTanggal || undefined
+        idTanggal: idTanggal || undefined,
+        nominalTarif: nominalTarif !== "" ? Number(nominalTarif) : undefined
       });
     }
 
@@ -520,32 +535,7 @@ export default function MasterPelanggan({
   return (
     <div className="space-y-6">
       
-      {/* Sub-tab Navigation */}
-      <div className="flex bg-slate-100 p-1 rounded-xl self-start w-fit border border-slate-200" id="pelanggan-subtab-navigation">
-        <button
-          onClick={() => setSubTab('pelanggan')}
-          className={`px-5 py-2 text-xs font-bold rounded-lg transition flex items-center gap-2 cursor-pointer ${
-            subTab === 'pelanggan'
-              ? 'bg-white text-indigo-700 shadow-xs'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <Users size={14} /> Kelola Pelanggan ({pelangganList.length})
-        </button>
-        <button
-          onClick={() => setSubTab('biaya')}
-          className={`px-5 py-2 text-xs font-bold rounded-lg transition flex items-center gap-2 cursor-pointer ${
-            subTab === 'biaya'
-              ? 'bg-white text-indigo-700 shadow-xs'
-              : 'text-slate-500 hover:text-slate-800'
-          }`}
-        >
-          <DollarSign size={14} /> Atur Paket & Tarif Bulanan ({biayaList.length})
-        </button>
-      </div>
-
-      {subTab === 'pelanggan' && (
-        <>
+      <>
           {/* Header and Add Action */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
         <div className="flex items-center gap-3">
@@ -714,23 +704,18 @@ export default function MasterPelanggan({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Pilihan Tarif */}
+                  {/* Nominal Tarif Custom */}
                   <div className="space-y-1">
-                    <label className="text-[11px] font-mono uppercase text-slate-500 font-semibold block">Paket Tarif / Biaya</label>
-                    <select
-                      value={idTarif}
-                      onChange={(e) => setIdTarif(e.target.value)}
-                      className="w-full text-xs p-2 border border-slate-250 rounded-lg focus:outline-hidden focus:border-indigo-650 text-slate-750 bg-white font-medium"
-                    >
-                      <option value="">-- Gunakan Tarif Standar --</option>
-                      {biayaList
-                        .filter((b) => b.layanan === layanan)
-                        .map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.namaPaket} ({formatRupiah(b.biayaPerBulan)})
-                          </option>
-                        ))}
-                    </select>
+                    <label className="text-[11px] font-mono uppercase text-slate-500 font-semibold block">Nominal Tarif Bulanan (Rp)</label>
+                    <input 
+                      type="number"
+                      min={0}
+                      placeholder="Contoh: 150000"
+                      value={nominalTarif}
+                      onChange={(e) => setNominalTarif(e.target.value === "" ? "" : Number(e.target.value))}
+                      className="w-full text-xs px-3 py-2 border border-slate-250 rounded-lg focus:outline-hidden focus:border-indigo-650 text-slate-700 bg-white font-mono font-semibold"
+                    />
+                    {errors.nominalTarif && <p className="text-[10px] text-rose-500 mt-1">{errors.nominalTarif}</p>}
                   </div>
 
                   {/* Pilihan Tanggal Jatuh Tempo */}
@@ -1030,28 +1015,19 @@ export default function MasterPelanggan({
                   {/* profil tagihan */}
                   <td className="p-4 leading-normal">
                     {(() => {
-                      const t = p.idTarif ? biayaList.find(b => b.id === p.idTarif) : biayaList.find(b => b.layanan === p.layanan);
                       const dt = p.idTanggal ? tanggalList.find(tg => tg.id === p.idTanggal) : tanggalList.find(tg => tg.layanan === p.layanan);
+                      const displayNominal = p.nominalTarif !== undefined && p.nominalTarif !== null && p.nominalTarif >= 0
+                        ? p.nominalTarif
+                        : (p.idTarif ? biayaList.find(b => b.id === p.idTarif) : biayaList.find(b => b.layanan === p.layanan))?.biayaPerBulan || 0;
                       
                       return (
-                        <div className="space-y-0.5 group/tariff relative">
-                          <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                            <span className="text-[11px] truncate block max-w-[130px]" title={t ? t.namaPaket : "Default"}>
-                              {t ? t.namaPaket : "Default Listrik/Air"}
-                            </span>
-                            {t && (
-                              <button 
-                                onClick={() => handleOpenEditBiaya(t)}
-                                className="opacity-0 group-hover/tariff:opacity-100 p-0.5 text-indigo-650 hover:bg-slate-100 rounded transition cursor-pointer"
-                                title="Edit nominal biaya paket ini langsung"
-                              >
-                                <Edit3 size={11} />
-                              </button>
-                            )}
+                        <div className="space-y-0.5">
+                          <div className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+                            <span>Tarif Bulanan</span>
                           </div>
                           <div className="font-mono text-[10px] text-slate-500 flex items-center gap-1 font-semibold flex-wrap">
-                            <span className="text-slate-705 bg-slate-100 px-1 py-0.5 rounded text-[9px] font-bold">
-                              {t ? formatRupiah(t.biayaPerBulan) : "-"}
+                            <span className="text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded text-[9px] font-black">
+                              {formatRupiah(displayNominal)}
                             </span>
                             <span>•</span>
                             <span className="text-rose-600 font-bold bg-rose-50 px-1 py-0.5 rounded text-[9px]">
@@ -1101,9 +1077,8 @@ export default function MasterPelanggan({
         </div>
       </div>
       </>
-    )}
 
-    {subTab === 'biaya' && (
+    {false && (
       <div className="space-y-6">
         {/* Header Panel */}
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
@@ -1261,7 +1236,7 @@ export default function MasterPelanggan({
     )}
 
     {/* Biaya Form CRUD Overlay Modal */}
-    {isBiayaFormOpen && (
+    {false && (
       <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 transition-all" id="biaya-modal">
         <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100">
           <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-900 text-white">

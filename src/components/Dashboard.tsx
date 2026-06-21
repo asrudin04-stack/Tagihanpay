@@ -81,9 +81,14 @@ export default function Dashboard({
     
     // For each pelanggan, check if they paid for activePeriods
     pelangganList.forEach(p => {
-      // Find standard tariff for client's service
-      const rateObj = p.idTarif ? biayaList.find(b => b.id === p.idTarif) : biayaList.find(b => b.layanan === p.layanan);
-      const perkiraanBiaya = rateObj ? rateObj.biayaPerBulan : 100000;
+      // Find tariff for client's service, prioritizing custom customer nominal
+      let perkiraanBiaya = 100000;
+      if (p.nominalTarif !== undefined && p.nominalTarif !== null && p.nominalTarif >= 0) {
+        perkiraanBiaya = p.nominalTarif;
+      } else {
+        const rateObj = p.idTarif ? biayaList.find(b => b.id === p.idTarif) : biayaList.find(b => b.layanan === p.layanan);
+        perkiraanBiaya = rateObj ? rateObj.biayaPerBulan : 100000;
+      }
 
       activePeriods.forEach(period => {
         const alreadyPaid = transaksiList.some(tx => 
