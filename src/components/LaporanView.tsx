@@ -55,7 +55,7 @@ export default function LaporanView({
   const [filterTahun, setFilterTahun] = useState("2026");
 
   // Active periods list for calculating arrears
-  const activePeriods = ["2026-05", "2026-06"];
+  const activePeriods = ["2026-06"];
 
   // ==========================================
   // CALCULATE REPORT DATA BY CHOSEN TAB
@@ -422,7 +422,7 @@ export default function LaporanView({
           {/* TAB 5: Tunggakan Info Indicator */}
           {activeReportTab === "tunggakan" && (
             <div className="text-xs text-slate-500">
-              Saringan otomatis aktif menampilkan semua tunggakan belum bayar untuk seluruh pelanggan terdaftar di periode Mei s/d Juni 2026.
+              Saringan otomatis aktif menampilkan semua tunggakan belum lunas periode bulan ini (Juni 2026).
             </div>
           )}
 

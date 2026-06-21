@@ -73,8 +73,8 @@ export default function Dashboard({
     return transaksiList.reduce((sum, tx) => sum + tx.jumlahBayar, 0);
   }, [transaksiList]);
 
-  // Determine standard cost for active periods (Mei, Juni 2026) for clients
-  const activePeriods = ["2026-05", "2026-06"];
+  // Determine standard cost for active periods (Juni 2026 / Bulan Ini) for clients
+  const activePeriods = ["2026-06"];
   
   const arrearsList = useMemo(() => {
     const list: { pelanggan: Pelanggan; periode: string; perkiraanBiaya: number }[] = [];

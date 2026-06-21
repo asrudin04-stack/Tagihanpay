@@ -110,7 +110,7 @@ export default function TransaksiView({
   }, [sendWaNotif]);
 
   // --- ARREARS ALERTS PERIODS ---
-  const activePeriods = ["2026-05", "2026-06"]; // Months simulated for unpaid check
+  const activePeriods = ["2026-06"]; // Months simulated for unpaid check
 
   // --- HISTORY SEARCH STATE ---
   const [historySearch, setHistorySearch] = useState("");
@@ -996,7 +996,7 @@ export default function TransaksiView({
               </div>
               <div className="space-y-0.5">
                 <span className="text-base font-bold text-slate-800">Kumpulan Tagihan yang Belum Lunas</span>
-                <p className="text-xs text-slate-500">Data pelanggan yang menunggak untuk periode aktif berjalan (Mei & Juni)</p>
+                <p className="text-xs text-slate-500">Data pelanggan yang belum melunasi tagihan periode berjalan (Bulan Ini / Juni 2026)</p>
               </div>
             </div>
             <div className="bg-rose-600 font-mono font-bold text-xs text-white px-3.5 py-1.5 rounded-lg">
