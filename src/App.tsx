@@ -54,6 +54,7 @@ import MasterBiaya from "./components/MasterBiaya";
 import TransaksiView from "./components/TransaksiView";
 import LaporanView from "./components/LaporanView";
 import PengaturanAkses from "./components/PengaturanAkses";
+import BackupRestoreView from "./components/BackupRestoreView";
 import { exportDataToSpreadsheet, getAccessToken } from "./lib/googleSheets";
 
 export default function App() {
@@ -595,6 +596,18 @@ export default function App() {
                 <Lock size={15} />
                 Pengaturan & Integrasi
               </button>
+
+              <button
+                onClick={() => setActiveTab("backup")}
+                className={`w-full flex items-center gap-3 px-3 py-2 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                  activeTab === "backup"
+                    ? "bg-indigo-600 text-white shadow-xs font-bold"
+                    : "text-slate-400 hover:text-white hover:bg-slate-800"
+                }`}
+              >
+                <Database size={15} />
+                Backup & Restore Data
+              </button>
             </div>
 
             {/* Danger Zone Utilities (Only for Administrator) */}
@@ -723,6 +736,15 @@ export default function App() {
                 }`}
               >
                 <Lock size={15} /> Pengaturan & Integrasi
+              </button>
+
+              <button
+                onClick={() => { setActiveTab("backup"); setIsMobileMenuOpen(false); }}
+                className={`py-2 px-3 text-xs font-bold rounded-lg text-left flex items-center gap-2.5 ${
+                  activeTab === "backup" ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-slate-850"
+                }`}
+              >
+                <Database size={15} /> Backup & Restore Data
               </button>
 
               {userRole === "administrator" && (
@@ -910,6 +932,19 @@ export default function App() {
                   onImportPelanggan={handleImportPelanggan}
                   onImportTransaksi={handleImportTransaksi}
                   onRestoreAllData={handleRestoreAllData}
+                />
+              )}
+
+              {/* RENDER VIEW: BACKUP & RESTORE DATA */}
+              {activeTab === "backup" && (
+                <BackupRestoreView 
+                  pelangganList={pelangganList}
+                  transaksiList={transaksiList}
+                  tanggalList={tanggalList}
+                  biayaList={biayaList}
+                  onRestoreAllData={handleRestoreAllData}
+                  onClearAllData={handleClearAllData}
+                  onResetToDefault={handleResetToDefault}
                 />
               )}
 
