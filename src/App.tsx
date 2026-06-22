@@ -276,6 +276,30 @@ export default function App() {
     });
   };
 
+  const handleRestoreAllData = (backup: {
+    pelanggan?: Pelanggan[];
+    tanggal?: TanggalPembayaran[];
+    biaya?: BiayaTarif[];
+    transaksi?: Transaksi[];
+  }) => {
+    if (backup.pelanggan) {
+      setPelangganList(backup.pelanggan);
+      localStorage.setItem("pembayaran_pelanggan", JSON.stringify(backup.pelanggan));
+    }
+    if (backup.tanggal) {
+      setTanggalList(backup.tanggal);
+      localStorage.setItem("pembayaran_tanggal", JSON.stringify(backup.tanggal));
+    }
+    if (backup.biaya) {
+      setBiayaList(backup.biaya);
+      localStorage.setItem("pembayaran_biaya", JSON.stringify(backup.biaya));
+    }
+    if (backup.transaksi) {
+      setTransaksiList(backup.transaksi);
+      localStorage.setItem("pembayaran_transaksi", JSON.stringify(backup.transaksi));
+    }
+  };
+
   // Pelanggan CRUD
   const handleAddPelanggan = (p: Pelanggan | Pelanggan[]) => {
     setPelangganList(prev => {
@@ -292,8 +316,9 @@ export default function App() {
     localStorage.setItem("pembayaran_pelanggan", JSON.stringify(updated));
   };
 
-  const handleDeletePelanggan = (id: string) => {
-    const updated = pelangganList.filter(item => item.id !== id);
+  const handleDeletePelanggan = (id: string | string[]) => {
+    const idsToDelete = Array.isArray(id) ? id : [id];
+    const updated = pelangganList.filter(item => !idsToDelete.includes(item.id));
     setPelangganList(updated);
     localStorage.setItem("pembayaran_pelanggan", JSON.stringify(updated));
   };
@@ -880,8 +905,11 @@ export default function App() {
                   }}
                   pelangganList={pelangganList}
                   transaksiList={transaksiList}
+                  tanggalList={tanggalList}
+                  biayaList={biayaList}
                   onImportPelanggan={handleImportPelanggan}
                   onImportTransaksi={handleImportTransaksi}
+                  onRestoreAllData={handleRestoreAllData}
                 />
               )}
 

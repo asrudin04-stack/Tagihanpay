@@ -17,9 +17,12 @@ import {
   Loader2,
   Copy,
   Info,
-  ArrowDownToLine
+  ArrowDownToLine,
+  Download,
+  Upload,
+  Database
 } from "lucide-react";
-import { Pelanggan, Transaksi } from "../types";
+import { Pelanggan, Transaksi, TanggalPembayaran, BiayaTarif } from "../types";
 import { 
   googleSignIn, 
   googleLogOut, 
@@ -39,8 +42,16 @@ interface PengaturanAksesProps {
   onUpdateKasir: (user: string, pass: string) => void;
   pelangganList: Pelanggan[];
   transaksiList: Transaksi[];
+  tanggalList: TanggalPembayaran[];
+  biayaList: BiayaTarif[];
   onImportPelanggan: (newList: Pelanggan[]) => void;
   onImportTransaksi: (newList: Transaksi[]) => void;
+  onRestoreAllData: (backupData: {
+    pelanggan: Pelanggan[];
+    tanggal: TanggalPembayaran[];
+    biaya: BiayaTarif[];
+    transaksi: Transaksi[];
+  }) => void;
 }
 
 export default function PengaturanAkses({
@@ -53,8 +64,11 @@ export default function PengaturanAkses({
   onUpdateKasir,
   pelangganList,
   transaksiList,
+  tanggalList,
+  biayaList,
   onImportPelanggan,
-  onImportTransaksi
+  onImportTransaksi,
+  onRestoreAllData
 }: PengaturanAksesProps) {
   // Input states
   const [newAdminUser, setNewAdminUser] = useState(adminUser);
@@ -221,6 +235,106 @@ export default function PengaturanAkses({
     if (!spreadSheetId) return;
     navigator.clipboard.writeText(spreadSheetId);
     alert("ID Spreadsheet disalin ke clipboard!");
+  };
+
+  const handleExportBackup = () => {
+    try {
+      const backupData = {
+        appName: "TagihanPay",
+        version: "2.0",
+        backupDate: new Date().toISOString(),
+        counts: {
+          pelanggan: pelangganList.length,
+          transaksi: transaksiList.length,
+          tanggal: tanggalList.length,
+          biaya: biayaList.length
+        },
+        payload: {
+          pelanggan: pelangganList,
+          transaksi: transaksiList,
+          tanggal: tanggalList,
+          biaya: biayaList
+        }
+      };
+
+      const jsonString = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      
+      const link = document.createElement("a");
+      const dateStr = new Date().toISOString().split('T')[0];
+      const timeStr = new Date().toLocaleTimeString("id", {hour: '2-digit', minute: '2-digit'}).replace(':', '-');
+      
+      link.href = url;
+      link.download = `TagihanPay_Backup_${dateStr}_${timeStr}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setNotif({ type: "success", message: `Backup berhasil diunduh! (${pelangganList.length} pelanggan, ${transaksiList.length} transaksi)` });
+      setTimeout(() => setNotif(null), 5000);
+    } catch (err: any) {
+      setNotif({ type: "error", message: `Gagal membuat backup: ${err.message}` });
+    }
+  };
+
+  const handleRestoreBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const backupData = JSON.parse(text);
+
+        // Robust parsing & validation
+        let restoredPelanggan = backupData.payload?.pelanggan || backupData.pelanggan;
+        let restoredTransaksi = backupData.payload?.transaksi || backupData.transaksi;
+        let restoredTanggal = backupData.payload?.tanggal || backupData.tanggal;
+        let restoredBiaya = backupData.payload?.biaya || backupData.biaya;
+
+        // Validation checks
+        if (!restoredPelanggan && !restoredTransaksi && !restoredTanggal && !restoredBiaya) {
+          throw new Error("File backup tidak valid. Harus berupa format backup resmi TagihanPay.");
+        }
+
+        // Standardize
+        restoredPelanggan = Array.isArray(restoredPelanggan) ? restoredPelanggan : [];
+        restoredTransaksi = Array.isArray(restoredTransaksi) ? restoredTransaksi : [];
+        restoredTanggal = Array.isArray(restoredTanggal) ? restoredTanggal : [];
+        restoredBiaya = Array.isArray(restoredBiaya) ? restoredBiaya : [];
+
+        const msg = `Apakah Anda yakin ingin melakukan restore?\nTindakan ini akan menimpa seluruh data lokal saat ini dengan:\n- ${restoredPelanggan.length} Pelanggan\n- ${restoredTransaksi.length} Riwayat Transaksi\n- ${restoredTanggal.length} Jadwal Jatuh Tempo\n- ${restoredBiaya.length} Paket Biaya & Tarif\n\nSeluruh data lama Anda akan terhapus otomatis di browser Anda. Lanjutkan?`;
+
+        if (window.confirm(msg)) {
+          onRestoreAllData({
+            pelanggan: restoredPelanggan,
+            transaksi: restoredTransaksi,
+            tanggal: restoredTanggal,
+            biaya: restoredBiaya
+          });
+
+          setNotif({
+            type: "success",
+            message: `Restorasi berhasil! Mengimpor ${restoredPelanggan.length} pelanggan, ${restoredTransaksi.length} transaksi!`
+          });
+          
+          // Clear file input to allow re-upload
+          if (e.target) {
+            e.target.value = "";
+          }
+          setTimeout(() => setNotif(null), 6000);
+        }
+      } catch (err: any) {
+        setNotif({ type: "error", message: `Gagal membaca file backup: ${err.message}` });
+        if (e.target) {
+          e.target.value = "";
+        }
+      }
+    };
+    reader.readAsText(file);
   };
 
   const sheetUrl = spreadSheetId ? `https://docs.google.com/spreadsheets/d/${spreadSheetId}/edit` : null;
@@ -705,6 +819,95 @@ export default function PengaturanAkses({
             </div>
           </div>
         )}
+      </div>
+
+      {/* 4. LOCAL BACKUP & RESTORE MODULE (JSON-BASED ATOMIC SEEDER) */}
+      <div className="space-y-4 border-t border-slate-100 pt-6 font-sans" id="local-backup-restore-config">
+        <h3 className="text-xs font-black uppercase text-indigo-950 font-mono tracking-wider flex items-center gap-2">
+          <Database className="text-indigo-600" size={18} />
+          Master Backup & Restore Data (Database Lokal Browser)
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          {/* Export Panel */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs flex flex-col justify-between text-left space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="p-1 px-2.5 rounded bg-indigo-50 text-indigo-700 text-[10px] font-mono font-bold uppercase tracking-wider">
+                  Ekspor Data
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">Ekstensi .json</span>
+              </div>
+              <h4 className="text-xs font-bold text-slate-800 font-sans">Unduh Salinan Cadangan Data</h4>
+              <p className="text-[11px] text-slate-500 leading-relaxed font-sans">
+                Buat file salinan cadangan instan untuk menyelamatkan seluruh data transaksi, pelanggan, tarif, dan tempo pembayaran. Anda dapat menyimpan file ini di drive lokal komputer Anda secara offline.
+              </p>
+            </div>
+
+            {/* Micro Database Stats visualization */}
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-150 text-[10.5px] font-mono text-slate-600 grid grid-cols-2 gap-2">
+              <div>
+                <p className="text-slate-400">Total Pelanggan:</p>
+                <p className="font-bold text-slate-800">{pelangganList.length} baris</p>
+              </div>
+              <div>
+                <p className="text-slate-400">Total Transaksi:</p>
+                <p className="font-bold text-slate-800">{transaksiList.length} baris</p>
+              </div>
+              <div>
+                <p className="text-slate-400 font-sans">Jadwal Jatuh Tempo:</p>
+                <p className="font-bold text-slate-800">{tanggalList.length} baris</p>
+              </div>
+              <div>
+                <p className="text-slate-400 font-sans">Pilihan Tarif:</p>
+                <p className="font-bold text-slate-800">{biayaList.length} baris</p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleExportBackup}
+              className="w-full mt-2 py-2.5 bg-indigo-600 hover:bg-indigo-750 text-white font-bold text-xs rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/10 shrink-0"
+            >
+              <Download size={14} /> Unduh File Backup Utama (.json)
+            </button>
+          </div>
+
+          {/* Import Panel */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs flex flex-col justify-between text-left space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="p-1 px-2.5 rounded bg-rose-50 text-rose-700 text-[10px] font-mono font-bold uppercase tracking-wider">
+                  Impor & Pulihkan
+                </span>
+                <span className="text-[10px] text-rose-500 font-bold font-mono">TIMPA / OVERWRITE</span>
+              </div>
+              <h4 className="text-xs font-bold text-slate-800 font-sans">Unggah & Kembalikan Data Loket</h4>
+              <p className="text-[11px] text-slate-500 leading-relaxed font-sans">
+                Pilih file backup `.json` yang telah Anda unduh sebelumnya untuk dikembalikan ke sistem browser ini. Tindakan ini akan <span className="font-bold text-rose-600">menimpa lokal database lokal</span> Anda secara keseluruhan.
+              </p>
+            </div>
+
+            {/* Elegant Drag-n-drop simulated area pointing to standard hidden input file trigger */}
+            <div className="relative border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-xl bg-slate-50 hover:bg-indigo-50/5 p-4 py-6 transition text-center cursor-pointer flex flex-col items-center justify-center min-h-[100px] shrink-0">
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleRestoreBackup}
+                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                title="Pilih File Backup JSON"
+              />
+              <div className="p-2 bg-slate-100 text-slate-505 rounded-full shrink-0 mb-2">
+                <Upload size={16} className="text-indigo-600 animate-bounce" />
+              </div>
+              <p className="text-[11px] font-bold text-indigo-700 font-sans">Klik untuk Mencari File Backup JSON</p>
+              <p className="text-[9.5px] text-slate-400 font-mono mt-0.5">Maks. File 2MB | Format .json saja</p>
+            </div>
+            
+          </div>
+
+        </div>
       </div>
 
       {/* Safety Instructions Card */}

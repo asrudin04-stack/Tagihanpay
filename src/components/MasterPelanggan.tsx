@@ -33,7 +33,7 @@ interface MasterPelangganProps {
   tanggalList: TanggalPembayaran[];
   onAddPelanggan: (pelanggan: Pelanggan | Pelanggan[]) => void;
   onUpdatePelanggan: (pelanggan: Pelanggan) => void;
-  onDeletePelanggan: (id: string) => void;
+  onDeletePelanggan: (id: string | string[]) => void;
   onAddBiaya: (biaya: BiayaTarif) => void;
   onUpdateBiaya: (biaya: BiayaTarif) => void;
   onDeleteBiaya: (id: string) => void;
@@ -53,6 +53,48 @@ export default function MasterPelanggan({
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState("");
   const [filterLayanan, setFilterLayanan] = useState<string>("SEMUA");
+
+  // Multi-select state for bulk deletion
+  const [selectedPelangganIds, setSelectedPelangganIds] = useState<string[]>([]);
+
+  // Clear selections when search filter or search term changes to avoid accidental deleting of un-viewed items
+  useEffect(() => {
+    setSelectedPelangganIds([]);
+  }, [searchTerm, filterLayanan]);
+
+  const handleSelectAllToggle = (visibleList: Pelanggan[]) => {
+    if (visibleList.length === 0) return;
+    const allFilteredIds = visibleList.map(p => p.id);
+    const areAllVisibleSelected = allFilteredIds.every(id => selectedPelangganIds.includes(id));
+
+    if (areAllVisibleSelected) {
+      // Uncheck all visible
+      setSelectedPelangganIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
+    } else {
+      // Check all visible
+      setSelectedPelangganIds(prev => {
+        const union = new Set([...prev, ...allFilteredIds]);
+        return Array.from(union);
+      });
+    }
+  };
+
+  const handleSelectRowToggle = (id: string) => {
+    setSelectedPelangganIds(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkDelete = (visibleList: Pelanggan[]) => {
+    // Only delete visible selected customers to match exact filter expectations
+    const visibleSelected = selectedPelangganIds.filter(id => visibleList.some(p => p.id === id));
+    if (visibleSelected.length === 0) return;
+
+    if (confirm(`Apakah Anda yakin ingin menghapus secara massal ${visibleSelected.length} pelanggan terpilih?`)) {
+      onDeletePelanggan(visibleSelected);
+      setSelectedPelangganIds([]);
+    }
+  };
 
   // Form states
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -680,6 +722,37 @@ export default function MasterPelanggan({
         </div>
       </div>
 
+      {/* Bulk Action Bar of Selected Customers */}
+      {selectedPelangganIds.length > 0 && (
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 bg-rose-50 border border-rose-150 p-4 rounded-xl shadow-xs text-rose-950 font-sans">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-rose-100 text-rose-600 rounded-lg shrink-0">
+              <Trash2 size={16} />
+            </div>
+            <div>
+              <p className="text-xs font-bold">Aksi Massal Terpilih</p>
+              <p className="text-[11px] text-rose-700">Terdapat <span className="font-bold underline">{selectedPelangganIds.length}</span> pelanggan yang dicentang.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <button
+              type="button"
+              onClick={() => setSelectedPelangganIds([])}
+              className="px-3.5 py-1.5 text-xs text-slate-700 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 font-semibold rounded-lg shadow-xs transition"
+            >
+              Batal Pilih
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkDelete(filteredList)}
+              className="px-4 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-md shadow-rose-600/10 flex items-center gap-1.5 transition whitespace-nowrap cursor-pointer"
+            >
+              <Trash2 size={14} /> Hapus Terpilih ({selectedPelangganIds.length})
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Customer Form Modal Overlay */}
       {isFormOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 transition-all animate-fadeIn" id="pelanggan-modal">
@@ -1041,7 +1114,15 @@ export default function MasterPelanggan({
           <table className="w-full border-collapse text-left text-slate-600">
              <thead>
               <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-mono uppercase tracking-wider text-slate-500">
-                <th className="p-4 pl-6 font-bold">INFO PELANGGAN</th>
+                <th className="p-4 pl-6 text-center w-12 font-bold">
+                  <input 
+                    type="checkbox"
+                    checked={filteredList.length > 0 && filteredList.every(p => selectedPelangganIds.includes(p.id))}
+                    onChange={() => handleSelectAllToggle(filteredList)}
+                    className="rounded-sm border-slate-350 accent-indigo-600 focus:ring-indigo-505 w-4 h-4 cursor-pointer"
+                  />
+                </th>
+                <th className="p-4 font-bold">INFO PELANGGAN</th>
                 <th className="p-4 font-bold">KONTAK</th>
                 <th className="p-4 font-bold">ALAMAT</th>
                 <th className="p-4 font-bold">LAYANAN UTAMA</th>
@@ -1052,9 +1133,18 @@ export default function MasterPelanggan({
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
               {filteredList.map((p) => (
-                <tr key={p.id} className="hover:bg-slate-50/50 transition">
+                <tr key={p.id} className={`hover:bg-slate-50/50 transition ${selectedPelangganIds.includes(p.id) ? "bg-indigo-50/30" : ""}`}>
+                  {/* checkbox select row style */}
+                  <td className="p-4 pl-6 text-center w-12">
+                    <input 
+                      type="checkbox"
+                      checked={selectedPelangganIds.includes(p.id)}
+                      onChange={() => handleSelectRowToggle(p.id)}
+                      className="rounded-sm border-slate-350 accent-indigo-600 focus:ring-indigo-505 w-4 h-4 cursor-pointer"
+                    />
+                  </td>
                   {/* info */}
-                  <td className="p-4 pl-6">
+                  <td className="p-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center font-bold text-indigo-700 text-xs">
                         {p.nama.charAt(0).toUpperCase()}
@@ -1156,7 +1246,7 @@ export default function MasterPelanggan({
 
               {filteredList.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center text-slate-400 text-xs">
+                  <td colSpan={8} className="p-12 text-center text-slate-400 text-xs">
                     Pelanggan tidak ditemukan. Masukkan kata kunci lain atau daftarkan pelanggan baru.
                   </td>
                 </tr>
