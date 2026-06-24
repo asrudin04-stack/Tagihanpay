@@ -25,6 +25,7 @@ import {
   Pelanggan, 
   Transaksi, 
   BiayaTarif, 
+  TanggalPembayaran,
   formatRupiah, 
   BULAN_LIST, 
   TAHUN_LIST, 
@@ -35,6 +36,7 @@ interface LaporanViewProps {
   pelangganList: Pelanggan[];
   transaksiList: Transaksi[];
   biayaList: BiayaTarif[];
+  tanggalList: TanggalPembayaran[];
 }
 
 type LaporanTab = "pelanggan" | "jenis" | "bulan" | "tahun" | "tunggakan";
@@ -42,7 +44,8 @@ type LaporanTab = "pelanggan" | "jenis" | "bulan" | "tahun" | "tunggakan";
 export default function LaporanView({
   pelangganList,
   transaksiList,
-  biayaList
+  biayaList,
+  tanggalList
 }: LaporanViewProps) {
   
   // Active Laporan Tab
@@ -159,6 +162,7 @@ export default function LaporanView({
       layanan: string; 
       periode: string; 
       nominal: number; 
+      jatuhTempo: string;
     }[] = [];
 
     pelangganList.forEach((p) => {
@@ -170,25 +174,34 @@ export default function LaporanView({
         nominal = rateObj ? rateObj.biayaPerBulan : 120000;
       }
 
+      // Find matching due date schedule for the service/customer
+      const schedule = p.idTanggal 
+        ? tanggalList.find((t) => t.id === p.idTanggal) 
+        : tanggalList.find((t) => t.layanan === p.layanan);
+      const dueDay = schedule ? schedule.tanggalJatuhTempo : 10;
+
       activePeriods.forEach((period) => {
         const isPaid = transaksiList.some(
           (tx) => tx.idPelanggan === p.id && tx.layanan === p.layanan && tx.periode === period
         );
 
         if (!isPaid) {
+          const parts = period.split("-");
+          const monthLabel = getMonthLabel(parts[1]);
           list.push({
             pelangganId: p.id,
             nama: p.nama,
             layanan: p.layanan,
             periode: period,
-            nominal
+            nominal,
+            jatuhTempo: `Tanggal ${dueDay} ${monthLabel} ${parts[0]}`
           });
         }
       });
     });
 
     return list;
-  }, [pelangganList, transaksiList, biayaList]);
+  }, [pelangganList, transaksiList, biayaList, tanggalList]);
 
   // Filtered version of arrears
   const filteredArrearsReportData = useMemo(() => {
@@ -802,7 +815,7 @@ export default function LaporanView({
                           </span>
                         </td>
                         <td className="p-3 font-mono text-slate-450 tracking-wide">
-                          Tanggal 10 tiap bulan
+                          {item.jatuhTempo}
                         </td>
                         <td className="p-3 pr-4 text-right font-mono font-bold text-rose-600">
                           {formatRupiah(item.nominal)}

@@ -27,6 +27,7 @@ import {
   Pelanggan, 
   Transaksi, 
   BiayaTarif, 
+  TanggalPembayaran,
   formatRupiah, 
   BULAN_LIST, 
   TAHUN_LIST, 
@@ -99,6 +100,7 @@ interface TransaksiViewProps {
   pelangganList: Pelanggan[];
   transaksiList: Transaksi[];
   biayaList: BiayaTarif[];
+  tanggalList: TanggalPembayaran[];
   onAddTransaksi: (newTx: Transaksi | Transaksi[]) => void;
   // State for preselecting from other tabs
   initialSelectedCustomerId?: string;
@@ -109,6 +111,7 @@ export default function TransaksiView({
   pelangganList,
   transaksiList,
   biayaList,
+  tanggalList,
   onAddTransaksi,
   initialSelectedCustomerId,
   clearInitialSelectedCustomerId
@@ -527,6 +530,12 @@ export default function TransaksiView({
         nominal = rateObj ? rateObj.biayaPerBulan : 120000;
       }
 
+      // Find matching due date schedule for the service/customer
+      const schedule = p.idTanggal 
+        ? tanggalList.find((t) => t.id === p.idTanggal) 
+        : tanggalList.find((t) => t.layanan === p.layanan);
+      const dueDay = schedule ? schedule.tanggalJatuhTempo : 10;
+
       activePeriods.forEach((period) => {
         // Check if customer paid this period for their service
         const isPaid = transaksiList.some(
@@ -541,14 +550,14 @@ export default function TransaksiView({
             pelanggan: p,
             periode: `${monthLabel} ${parts[0]}`,
             nominal,
-            jatuhTempo: `Tanggal 10 ${monthLabel} ${parts[0]}`
+            jatuhTempo: `Tanggal ${dueDay} ${monthLabel} ${parts[0]}`
           });
         }
       });
     });
 
     return list;
-  }, [pelangganList, transaksiList, biayaList]);
+  }, [pelangganList, transaksiList, biayaList, tanggalList]);
 
   // Filtered customer list for the Dropdown selector
   const filteredPelangganList = useMemo(() => {

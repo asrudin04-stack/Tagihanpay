@@ -894,6 +894,7 @@ export default function App() {
                   pelangganList={pelangganList}
                   transaksiList={transaksiList}
                   biayaList={biayaList}
+                  tanggalList={tanggalList}
                   onAddTransaksi={handleAddTransaksi}
                   initialSelectedCustomerId={quickPaymentCustomerId}
                   clearInitialSelectedCustomerId={() => setQuickPaymentCustomerId(undefined)}
@@ -906,6 +907,7 @@ export default function App() {
                   pelangganList={pelangganList}
                   transaksiList={transaksiList}
                   biayaList={biayaList}
+                  tanggalList={tanggalList}
                 />
               )}
 
