@@ -4,7 +4,7 @@
  * Elegant Premium Dashboard for TagihanPay
  */
 
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { 
   Users, 
   Wallet, 
@@ -21,7 +21,9 @@ import {
   ArrowRight,
   TrendingUp,
   AlertTriangle,
-  Calendar
+  Calendar,
+  Layers,
+  Boxes
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -159,6 +161,110 @@ export default function Dashboard({
       { name: "Internet WIFI", value: serviceStats.WIFI, color: "#a855f7", icon: Wifi }
     ];
   }, [serviceStats]);
+
+  // 3D Visualization States and Computations
+  const [chartStyle, setChartStyle] = useState<"2d" | "3d">("3d");
+  const [active3DMetric, setActive3DMetric] = useState<"revenue" | "services" | "compare">("revenue");
+  const [hovered3DBar, setHovered3DBar] = useState<number | null>(null);
+
+  const revenue3DData = useMemo(() => {
+    return monthlyRevenue.map((m) => ({
+      label: m.label,
+      shortLabel: m.label.split(" ")[0],
+      value: m.total,
+      theme: "indigo",
+      topColor: "#a5b4fc"
+    }));
+  }, [monthlyRevenue]);
+
+  const services3DData = useMemo(() => {
+    return [
+      {
+        label: "Listrik PLN",
+        shortLabel: "PLN",
+        value: serviceStats.PLN,
+        theme: "amber",
+        topColor: "#fef08a"
+      },
+      {
+        label: "Air PDAM",
+        shortLabel: "PDAM",
+        value: serviceStats.PDAM,
+        theme: "blue",
+        topColor: "#bfdbfe"
+      },
+      {
+        label: "Internet WIFI",
+        shortLabel: "WIFI",
+        value: serviceStats.WIFI,
+        theme: "purple",
+        topColor: "#e9d5ff"
+      }
+    ];
+  }, [serviceStats]);
+
+  const compare3DData = useMemo(() => {
+    return [
+      {
+        label: "Terbayar Lunas",
+        shortLabel: "Lunas",
+        value: totalPendapatan,
+        theme: "emerald",
+        topColor: "#a7f3d0"
+      },
+      {
+        label: "Tunggakan Aktif",
+        shortLabel: "Tunggakan",
+        value: totalTunggakan,
+        theme: "rose",
+        topColor: "#fecdd3"
+      }
+    ];
+  }, [totalPendapatan, totalTunggakan]);
+
+  const active3DDataset = useMemo(() => {
+    if (active3DMetric === "services") return services3DData;
+    if (active3DMetric === "compare") return compare3DData;
+    return revenue3DData;
+  }, [active3DMetric, revenue3DData, services3DData, compare3DData]);
+
+  const max3DValue = useMemo(() => {
+    const maxVal = Math.max(...active3DDataset.map(item => item.value), 1);
+    return maxVal;
+  }, [active3DDataset]);
+
+  const positions3D = useMemo(() => {
+    const list: { x: number; w: number; d: number }[] = [];
+    const N = active3DDataset.length;
+    const startX = 40;
+    
+    if (N === 6) {
+      for (let i = 0; i < 6; i++) {
+        list.push({
+          x: startX + i * 82 + 10,
+          w: 34,
+          d: 14
+        });
+      }
+    } else if (N === 3) {
+      for (let i = 0; i < 3; i++) {
+        list.push({
+          x: startX + i * 160 + 60,
+          w: 50,
+          d: 18
+        });
+      }
+    } else {
+      for (let i = 0; i < 2; i++) {
+        list.push({
+          x: startX + i * 220 + 90,
+          w: 58,
+          d: 22
+        });
+      }
+    }
+    return list;
+  }, [active3DDataset]);
 
   // Upcoming Deadlines filter & computation (with 3-day window comparison)
   const upcomingDeadlines = useMemo(() => {
@@ -370,65 +476,396 @@ export default function Dashboard({
       {/* Main Charts & Breakdown Bento Row - Styled Elegantly */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" id="dashboard-graphics">
         
-        {/* Custom Monthly Revenue Bar Chart with Elegant Mesh Layout */}
+        {/* Custom Monthly Revenue Bar Chart with Elegant Mesh Layout / Interactive 3D Visualization */}
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-xs lg:col-span-2 space-y-6 flex flex-col justify-between" id="monthly-revenue-chart-card">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="space-y-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1 text-left">
               <div className="flex items-center gap-1.5 text-indigo-600 font-bold text-xs uppercase tracking-wide">
-                <TrendingUp size={15} />
-                <span>Analisa Grafik</span>
+                <Boxes size={15} className="animate-pulse text-indigo-500" />
+                <span>Analisa Visualisasi Multi-Dimensi</span>
               </div>
-              <h4 className="text-base font-bold text-slate-850">Tren Pendapatan Bulanan</h4>
-              <p className="text-xs text-slate-500">Arus kas pendapatan riil bulanan yang masuk sepanjang tahun 2526.</p>
+              <h4 className="text-base font-bold text-slate-850">
+                {chartStyle === "3d" ? "Proyeksi 3D Hologram Loket" : "Tren Grafik Pendapatan Bulanan"}
+              </h4>
+              <p className="text-xs text-slate-500">
+                {chartStyle === "3d" 
+                  ? "Tampilan visualisasi interaktif 3D pilar untuk perbandingan data yang taktil." 
+                  : "Grafik linear akumulasi omset kas masuk TagihanPay tahun 2026."}
+              </p>
             </div>
-            <span className="px-3 py-1 text-[10px] font-bold bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full font-mono max-w-fit">
-              TAHUN AGARAN 2026
-            </span>
+
+            {/* Segmented Controls for 2D vs 3D */}
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl shrink-0 self-start sm:self-center">
+              <button
+                type="button"
+                onClick={() => setChartStyle("3d")}
+                className={`px-3 py-1.5 rounded-lg text-[10.5px] font-bold transition flex items-center gap-1 cursor-pointer ${
+                  chartStyle === "3d" 
+                    ? "bg-white text-indigo-950 shadow-xs" 
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <Layers size={13} />
+                Tampilan 3D
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartStyle("2d")}
+                className={`px-3 py-1.5 rounded-lg text-[10.5px] font-bold transition flex items-center gap-1 cursor-pointer ${
+                  chartStyle === "2d" 
+                    ? "bg-white text-indigo-950 shadow-xs" 
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <TrendingUp size={13} />
+                Tampilan 2D
+              </button>
+            </div>
           </div>
 
-          {/* AreaChart using Recharts */}
-          <div className="h-64 w-full" id="revenue-recharts-container">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={monthlyRevenue}
-                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+          {/* 3D Secondary Filter Bar (Only shown in 3D Mode) */}
+          {chartStyle === "3d" && (
+            <div className="flex flex-wrap gap-2 border-b border-slate-100 pb-3" id="3d-metrics-selector">
+              <button
+                type="button"
+                onClick={() => { setActive3DMetric("revenue"); setHovered3DBar(null); }}
+                className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase transition flex items-center gap-1.5 border cursor-pointer ${
+                  active3DMetric === "revenue"
+                    ? "bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm shadow-indigo-100/30"
+                    : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+                }`}
               >
-                <defs>
-                  <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis 
-                  dataKey="label" 
-                  tickFormatter={(tick) => tick.split(" ")[0]}
-                  tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600, fontFamily: 'monospace' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis 
-                  tickFormatter={(val) => `Rp ${(val / 1000).toFixed(0)}k`}
-                  tick={{ fill: '#64748b', fontSize: 10, fontWeight: 500, fontFamily: 'monospace' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTooltip />} />
-                <Area 
-                  type="monotone" 
-                  dataKey="total" 
-                  stroke="#4f46e5" 
-                  strokeWidth={2.5}
-                  fillOpacity={1} 
-                  fill="url(#colorTotal)" 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                Pemasukan Bulanan
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActive3DMetric("services"); setHovered3DBar(null); }}
+                className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase transition flex items-center gap-1.5 border cursor-pointer ${
+                  active3DMetric === "services"
+                    ? "bg-amber-50 border-amber-200 text-amber-700 shadow-sm shadow-amber-100/30"
+                    : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+                }`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                Kategori Layanan
+              </button>
+              <button
+                type="button"
+                onClick={() => { setActive3DMetric("compare"); setHovered3DBar(null); }}
+                className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase transition flex items-center gap-1.5 border cursor-pointer ${
+                  active3DMetric === "compare"
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm shadow-emerald-100/30"
+                    : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"
+                }`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                Lunas vs Tunggakan
+              </button>
+            </div>
+          )}
+
+          {/* MAIN GRAPH AREA */}
+          <div className="relative min-h-[260px] flex flex-col justify-center" id="main-chart-canvas">
+            {chartStyle === "2d" ? (
+              /* Original 2D Recharts AreaChart */
+              <div className="h-64 w-full" id="revenue-recharts-container">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={monthlyRevenue}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis 
+                      dataKey="label" 
+                      tickFormatter={(tick) => tick.split(" ")[0]}
+                      tick={{ fill: '#64748b', fontSize: 10, fontWeight: 600, fontFamily: 'monospace' }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      tickFormatter={(val) => `Rp ${(val / 1000).toFixed(0)}k`}
+                      tick={{ fill: '#64748b', fontSize: 10, fontWeight: 500, fontFamily: 'monospace' }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area 
+                      type="monotone" 
+                      dataKey="total" 
+                      stroke="#4f46e5" 
+                      strokeWidth={2.5}
+                      fillOpacity={1} 
+                      fill="url(#colorTotal)" 
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              /* Pure HTML/SVG 3D Isometric Chart */
+              <div className="w-full flex flex-col justify-center items-center" id="isometric-3d-scene">
+                <svg viewBox="0 0 600 300" className="w-full max-w-2xl h-full min-h-[240px] drop-shadow-sm overflow-visible">
+                  <defs>
+                    {/* Indigo (Revenue) */}
+                    <linearGradient id="grad-indigo-front" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#6366f1" />
+                      <stop offset="100%" stopColor="#4f46e5" />
+                    </linearGradient>
+                    <linearGradient id="grad-indigo-right" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#4338ca" />
+                      <stop offset="100%" stopColor="#312e81" />
+                    </linearGradient>
+
+                    {/* Amber (PLN) */}
+                    <linearGradient id="grad-amber-front" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#fbbf24" />
+                      <stop offset="100%" stopColor="#f59e0b" />
+                    </linearGradient>
+                    <linearGradient id="grad-amber-right" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#d97706" />
+                      <stop offset="100%" stopColor="#78350f" />
+                    </linearGradient>
+
+                    {/* Blue (PDAM) */}
+                    <linearGradient id="grad-blue-front" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#60a5fa" />
+                      <stop offset="100%" stopColor="#3b82f6" />
+                    </linearGradient>
+                    <linearGradient id="grad-blue-right" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#2563eb" />
+                      <stop offset="100%" stopColor="#1e3a8a" />
+                    </linearGradient>
+
+                    {/* Purple (WIFI) */}
+                    <linearGradient id="grad-purple-front" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#c084fc" />
+                      <stop offset="100%" stopColor="#a855f7" />
+                    </linearGradient>
+                    <linearGradient id="grad-purple-right" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#9333ea" />
+                      <stop offset="100%" stopColor="#581c87" />
+                    </linearGradient>
+
+                    {/* Emerald (Lunas) */}
+                    <linearGradient id="grad-emerald-front" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#34d399" />
+                      <stop offset="100%" stopColor="#10b981" />
+                    </linearGradient>
+                    <linearGradient id="grad-emerald-right" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#059669" />
+                      <stop offset="100%" stopColor="#064e3b" />
+                    </linearGradient>
+
+                    {/* Rose (Tunggakan) */}
+                    <linearGradient id="grad-rose-front" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f87171" />
+                      <stop offset="100%" stopColor="#f43f5e" />
+                    </linearGradient>
+                    <linearGradient id="grad-rose-right" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#e11d48" />
+                      <stop offset="100%" stopColor="#4c0519" />
+                    </linearGradient>
+
+                    {/* Glow filters */}
+                    <filter id="glow-indigo" x="-20%" y="-20%" width="140%" height="140%">
+                      <feDropShadow dx="0" dy="6" stdDeviation="4" floodColor="#6366f1" floodOpacity="0.3" />
+                    </filter>
+                    <filter id="glow-amber" x="-20%" y="-20%" width="140%" height="140%">
+                      <feDropShadow dx="0" dy="6" stdDeviation="4" floodColor="#f59e0b" floodOpacity="0.3" />
+                    </filter>
+                    <filter id="glow-blue" x="-20%" y="-20%" width="140%" height="140%">
+                      <feDropShadow dx="0" dy="6" stdDeviation="4" floodColor="#3b82f6" floodOpacity="0.3" />
+                    </filter>
+                    <filter id="glow-purple" x="-20%" y="-20%" width="140%" height="140%">
+                      <feDropShadow dx="0" dy="6" stdDeviation="4" floodColor="#a855f7" floodOpacity="0.3" />
+                    </filter>
+                    <filter id="glow-emerald" x="-20%" y="-20%" width="140%" height="140%">
+                      <feDropShadow dx="0" dy="6" stdDeviation="4" floodColor="#10b981" floodOpacity="0.3" />
+                    </filter>
+                    <filter id="glow-rose" x="-20%" y="-20%" width="140%" height="140%">
+                      <feDropShadow dx="0" dy="6" stdDeviation="4" floodColor="#f43f5e" floodOpacity="0.3" />
+                    </filter>
+                  </defs>
+
+                  {/* 3D Grid Perspective Lines on the floor */}
+                  <g className="opacity-30">
+                    <line x1={30} y1={240} x2={570} y2={240} stroke="#94a3b8" strokeWidth="1.5" />
+                    <line x1={44} y1={233} x2={584} y2={233} stroke="#cbd5e1" strokeWidth="1" strokeDasharray="2 2" />
+                  </g>
+
+                  {/* Background Gridlines for height metric scales */}
+                  {[0.25, 0.5, 0.75, 1.0].map((ratio, index) => {
+                    const yVal = 240 - ratio * 160;
+                    return (
+                      <g key={index} className="opacity-25">
+                        <line x1={30} y1={yVal} x2={570} y2={yVal} stroke="#e2e8f0" strokeWidth="1" strokeDasharray="3 3" />
+                        {/* Horizontal side perspective line */}
+                        <line x1={30} y1={yVal} x2={44} y2={yVal - 7} stroke="#e2e8f0" strokeWidth="0.8" />
+                        <text
+                          x={22}
+                          y={yVal + 3}
+                          fill="#94a3b8"
+                          fontSize={9}
+                          fontWeight="bold"
+                          fontFamily="monospace"
+                          textAnchor="end"
+                        >
+                          {ratio === 1.0 ? "MAX" : `Rp ${((ratio * max3DValue) / 1000).toFixed(0)}k`}
+                        </text>
+                      </g>
+                    );
+                  })}
+
+                  {/* RENDER THE 3D COLUMNS */}
+                  {active3DDataset.map((item, i) => {
+                    const pos = positions3D[i];
+                    if (!pos) return null;
+                    const isHovered = hovered3DBar === i;
+
+                    const H = Math.max(8, (item.value / max3DValue) * 160);
+                    const dx = pos.d;
+                    const dy = - (pos.d / 2);
+                    const baseY = 240;
+
+                    const frontPoints = `${pos.x},${baseY - H} ${pos.x + pos.w},${baseY - H} ${pos.x + pos.w},${baseY} ${pos.x},${baseY}`;
+                    const rightPoints = `${pos.x + pos.w},${baseY - H} ${pos.x + pos.w + dx},${baseY - H + dy} ${pos.x + pos.w + dx},${baseY + dy} ${pos.x + pos.w},${baseY}`;
+                    const topPoints = `${pos.x},${baseY - H} ${pos.x + pos.w},${baseY - H} ${pos.x + pos.w + dx},${baseY - H + dy} ${pos.x + dx},${baseY - H + dy}`;
+                    const pedestalPoints = `${pos.x - 4},${baseY} ${pos.x + pos.w + 4},${baseY} ${pos.x + pos.w + dx + 4},${baseY + dy} ${pos.x + dx - 4},${baseY + dy}`;
+
+                    return (
+                      <g
+                        key={i}
+                        className="cursor-pointer"
+                        onMouseEnter={() => setHovered3DBar(i)}
+                        onMouseLeave={() => setHovered3DBar(null)}
+                      >
+                        {/* Pedestal Base Plate under the 3D pillar */}
+                        <polygon
+                          points={pedestalPoints}
+                          fill={isHovered ? "rgba(99,102,241,0.06)" : "#f8fafc"}
+                          stroke={isHovered ? "currentColor" : "#e2e8f0"}
+                          strokeWidth={isHovered ? "1.5" : "1"}
+                          className={`transition-all duration-300 ${
+                            isHovered 
+                              ? item.theme === "amber" ? "text-amber-500" :
+                                item.theme === "blue" ? "text-blue-500" :
+                                item.theme === "purple" ? "text-purple-500" :
+                                item.theme === "emerald" ? "text-emerald-500" :
+                                item.theme === "rose" ? "text-rose-500" :
+                                "text-indigo-500"
+                              : ""
+                          }`}
+                        />
+
+                        {/* Outer Glow filter applied on hover */}
+                        <g 
+                          filter={isHovered ? `url(#glow-${item.theme})` : undefined}
+                          className="transition-transform duration-300"
+                          style={{
+                            transform: isHovered ? "translateY(-6px)" : "translateY(0)"
+                          }}
+                        >
+                          {/* Front face with gradient */}
+                          <polygon
+                            points={frontPoints}
+                            fill={`url(#grad-${item.theme}-front)`}
+                            className="transition-all duration-300"
+                          />
+
+                          {/* Right face with gradient */}
+                          <polygon
+                            points={rightPoints}
+                            fill={`url(#grad-${item.theme}-right)`}
+                            className="transition-all duration-300"
+                          />
+
+                          {/* Top face with bright theme colors */}
+                          <polygon
+                            points={topPoints}
+                            fill={item.topColor}
+                            className="transition-all duration-300"
+                          />
+                        </g>
+
+                        {/* Overlay X-axis Label text under the column */}
+                        <text
+                          x={pos.x + pos.w / 2 + pos.d / 2}
+                          y={baseY + 22}
+                          textAnchor="middle"
+                          fill={isHovered ? "#0f172a" : "#64748b"}
+                          fontSize={10}
+                          fontFamily="sans-serif"
+                          fontWeight={isHovered ? "bold" : "600"}
+                          className="transition-colors duration-300 font-mono"
+                        >
+                          {item.shortLabel}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </svg>
+
+                {/* 3D Holographic metrics dashboard deck details */}
+                <div className="w-full mt-4 bg-slate-900 border border-slate-800 text-white p-4.5 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative overflow-hidden shadow-2xl transition-all duration-300">
+                  <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-radial from-indigo-500/10 to-transparent pointer-events-none"></div>
+                  
+                  {hovered3DBar !== null ? (
+                    <>
+                      <div className="space-y-1 z-10 text-left">
+                        <span className="p-1 px-2 text-[8.5px] font-mono font-black uppercase rounded tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/10 inline-block">
+                          Informasi Terfokus 3D
+                        </span>
+                        <h5 className="text-sm font-extrabold text-white tracking-tight flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${
+                            active3DDataset[hovered3DBar].theme === "amber" ? "bg-amber-400" :
+                            active3DDataset[hovered3DBar].theme === "blue" ? "bg-blue-400" :
+                            active3DDataset[hovered3DBar].theme === "purple" ? "bg-purple-400" :
+                            active3DDataset[hovered3DBar].theme === "emerald" ? "bg-emerald-400" :
+                            active3DDataset[hovered3DBar].theme === "rose" ? "bg-rose-400" :
+                            "bg-indigo-400"
+                          }`}></span>
+                          {active3DDataset[hovered3DBar].label}
+                        </h5>
+                      </div>
+                      
+                      <div className="space-y-0.5 z-10 text-left sm:text-right">
+                        <span className="text-[10px] text-slate-400 font-semibold block font-mono">NOMINAL REKOR</span>
+                        <p className="text-base font-black text-emerald-400 font-mono">
+                          {formatRupiah(active3DDataset[hovered3DBar].value)}
+                        </p>
+                      </div>
+
+                      <div className="space-y-0.5 z-10 text-left sm:text-right">
+                        <span className="text-[10px] text-slate-400 font-semibold block font-mono">PERSENTASE KONTRIBUSI</span>
+                        <p className="text-sm font-bold text-slate-200">
+                          {totalPendapatan > 0
+                            ? `${((active3DDataset[hovered3DBar].value / (active3DMetric === "compare" ? (totalPendapatan + totalTunggakan) : totalPendapatan)) * 100).toFixed(1)}%`
+                            : "0%"}
+                        </p>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-full flex items-center justify-center gap-2 text-xs text-slate-400 font-medium py-1.5 font-sans z-10">
+                      <Sparkles size={14} className="text-indigo-400 animate-spin-slow shrink-0" />
+                      <span>Gerakkan kursor atau sentuh pilar 3D untuk memicu analisa hologram instan.</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-between items-center text-[9px] font-mono text-slate-400 pt-2 border-t border-slate-100">
-            <span className="font-semibold">Sistem Laporan Otomatis</span>
-            <span className="text-indigo-600 font-bold">Volume Puncak: {formatRupiah(maxRevenue)}</span>
+            <span className="font-semibold uppercase tracking-wider">Tampilan 3D Render Engine v2.0</span>
+            <span className="text-indigo-600 font-black">
+              {chartStyle === "3d" ? `Metric: ${active3DMetric.toUpperCase()}` : `Volume Puncak: ${formatRupiah(maxRevenue)}`}
+            </span>
           </div>
         </div>
 
