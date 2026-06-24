@@ -23,7 +23,9 @@ import {
   AlertTriangle,
   Calendar,
   Layers,
-  Boxes
+  Boxes,
+  MapPin,
+  Search
 } from "lucide-react";
 import { 
   AreaChart, 
@@ -166,6 +168,36 @@ export default function Dashboard({
   const [chartStyle, setChartStyle] = useState<"2d" | "3d">("3d");
   const [active3DMetric, setActive3DMetric] = useState<"revenue" | "services" | "compare">("revenue");
   const [hovered3DBar, setHovered3DBar] = useState<number | null>(null);
+
+  // Village/Address Distribution State and Memo
+  const [alamatSearch, setAlamatSearch] = useState("");
+
+  const addressStats = useMemo(() => {
+    const counts: Record<string, { total: number; PLN: number; PDAM: number; WIFI: number }> = {};
+    pelangganList.forEach(p => {
+      const addr = (p.alamat || "Tanpa Alamat").trim();
+      if (!counts[addr]) {
+        counts[addr] = { total: 0, PLN: 0, PDAM: 0, WIFI: 0 };
+      }
+      counts[addr].total += 1;
+      if (p.layanan === "PLN") counts[addr].PLN += 1;
+      else if (p.layanan === "PDAM") counts[addr].PDAM += 1;
+      else if (p.layanan === "WIFI") counts[addr].WIFI += 1;
+    });
+
+    return Object.entries(counts)
+      .map(([alamat, stats]) => ({
+        alamat,
+        ...stats
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [pelangganList]);
+
+  const filteredAddressStats = useMemo(() => {
+    if (!alamatSearch.trim()) return addressStats;
+    const q = alamatSearch.toLowerCase();
+    return addressStats.filter(item => item.alamat.toLowerCase().includes(q));
+  }, [addressStats, alamatSearch]);
 
   const revenue3DData = useMemo(() => {
     return monthlyRevenue.map((m) => ({
@@ -937,6 +969,121 @@ export default function Dashboard({
 
         </div>
 
+      </div>
+
+      {/* SEBARAN PELANGGAN PER ALAMAT / DESA */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xs space-y-5" id="customer-address-distribution">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-50 pb-4">
+          <div className="space-y-1 text-left">
+            <div className="flex items-center gap-1.5 text-indigo-600 font-bold text-xs uppercase tracking-wide">
+              <MapPin size={15} className="text-indigo-500 shrink-0" />
+              <span>Pemetaan Wilayah Pelanggan</span>
+            </div>
+            <h4 className="text-base font-extrabold text-slate-850">Sebaran Pelanggan per Alamat / Desa</h4>
+            <p className="text-xs text-slate-500">
+              Menampilkan distribusi total pelanggan terdaftar dan jenis layanan aktif di masing-masing wilayah desa atau jalan.
+            </p>
+          </div>
+
+          {/* Search Box inside Section */}
+          <div className="relative w-full md:w-72">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+              <Search size={14} />
+            </span>
+            <input
+              type="text"
+              placeholder="Cari desa atau alamat..."
+              value={alamatSearch}
+              onChange={(e) => setAlamatSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 text-slate-800 placeholder-slate-400 text-xs rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150"
+            />
+            {alamatSearch && (
+              <button
+                onClick={() => setAlamatSearch("")}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-[10px] font-mono text-slate-400 hover:text-slate-600 cursor-pointer border-none bg-transparent"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Grid mapping address stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" id="address-grid">
+          {filteredAddressStats.map((item) => {
+            const maxTotal = addressStats.length > 0 ? addressStats[0].total : 1;
+            const percentageOfMax = Math.round((item.total / maxTotal) * 100);
+            const totalPelangganApp = pelangganList.length || 1;
+            const percentageOfTotal = ((item.total / totalPelangganApp) * 100).toFixed(1);
+
+            return (
+              <div 
+                key={item.alamat} 
+                className="p-4 bg-slate-50/40 hover:bg-slate-50 border border-slate-100 hover:border-indigo-100 rounded-2xl transition duration-300 flex flex-col justify-between gap-3 group relative overflow-hidden text-left"
+              >
+                {/* Visual accent top line on hover */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-indigo-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left"></div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="font-extrabold text-slate-850 text-xs line-clamp-2 leading-snug group-hover:text-indigo-900 transition">
+                      {item.alamat}
+                    </span>
+                    <span className="px-2 py-0.5 bg-indigo-50 border border-indigo-100 text-indigo-700 font-mono text-[10px] font-black rounded-md shrink-0">
+                      {item.total} PLG
+                    </span>
+                  </div>
+
+                  <p className="text-[10px] text-slate-400 font-medium">
+                    Rasio: <strong className="text-slate-650 font-bold">{percentageOfTotal}%</strong> dari total pelanggan
+                  </p>
+                </div>
+
+                {/* Progress bar mapping concentration */}
+                <div className="space-y-1">
+                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-indigo-650 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${percentageOfMax}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                {/* Services breakdown in this address */}
+                <div className="flex items-center gap-1.5 pt-1.5 border-t border-slate-100 text-[10px] font-mono text-slate-500">
+                  <span className="font-bold text-[9px] text-slate-400 uppercase tracking-wider block mr-1">Layanan:</span>
+                  
+                  {item.PLN > 0 && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-50 text-amber-700 rounded border border-amber-100" title="Listrik PLN">
+                      <Zap size={9} fill="currentColor" />
+                      <span>{item.PLN}</span>
+                    </span>
+                  )}
+                  {item.PDAM > 0 && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-100" title="Air PDAM">
+                      <Droplet size={9} fill="currentColor" />
+                      <span>{item.PDAM}</span>
+                    </span>
+                  )}
+                  {item.WIFI > 0 && (
+                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-purple-50 text-purple-700 rounded border border-purple-100" title="Internet WIFI">
+                      <Wifi size={9} />
+                      <span>{item.WIFI}</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {filteredAddressStats.length === 0 && (
+            <div className="col-span-full py-12 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-2 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+              <MapPin size={22} className="text-slate-300" />
+              <span className="font-bold text-slate-700">Wilayah Tidak Ditemukan</span>
+              <span>Tidak ada alamat/desa yang cocok dengan pencarian "{alamatSearch}"</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Row: Recent Transactions & Urgent Deadlines / Tasks */}
