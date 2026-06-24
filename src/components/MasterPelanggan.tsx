@@ -510,6 +510,39 @@ export default function MasterPelanggan({
     }, 1800);
   };
 
+  const handleExportPelanggan = () => {
+    const dataToExport = filteredList;
+    if (dataToExport.length === 0) {
+      alert("Tidak ada data pelanggan untuk diexport");
+      return;
+    }
+    
+    let csvContent = "\uFEFF"; // BOM for UTF-8 compatibility with MS Excel
+    csvContent += "ID Pelanggan,Nama Pelanggan,No Telepon,Alamat,Layanan,No ID Meteran/Akun,Tarif Bulanan,ID Tanggal Jatuh Tempo\r\n";
+    
+    dataToExport.forEach((p) => {
+      const id = p.id;
+      const nama = `"${p.nama.replace(/"/g, '""')}"`;
+      const noTelp = `"${p.noTelp.replace(/"/g, '""')}"`;
+      const alamat = `"${p.alamat.replace(/"/g, '""')}"`;
+      const layanan = p.layanan;
+      const noMeter = `"${p.noMeter.replace(/"/g, '""')}"`;
+      const tarif = p.nominalTarif !== undefined ? p.nominalTarif : "";
+      const idTanggal = p.idTanggal || "";
+      
+      csvContent += `${id},${nama},${noTelp},${alamat},${layanan},${noMeter},${tarif},${idTanggal}\r\n`;
+    });
+    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `export_pelanggan_${filterLayanan.toLowerCase()}_${new Date().toISOString().split("T")[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const downloadTemplateCustomerCSV = () => {
     const headers = "nama,noTelp,alamat,layanan,noMeter,tarifBulanan,idTanggal\n";
     const sample = "Joko Susilo,081299998888,Jl. Anggrek No. 10,PLN,53221199028,150000,TGL-001\nSusi Susanti,085522221111,Perum Permai Blok D-2,WIFI,WIFI-IND-9092,275000,TGL-003\nPak Amat,089911110000,Desa Makmur RT 01,PDAM,PAM-887711,95000,TGL-002\n";
@@ -681,6 +714,13 @@ export default function MasterPelanggan({
             id="import-pelanggan-btn"
           >
             <Download size={16} className="rotate-180" /> Import CSV/Excel
+          </button>
+          <button 
+            onClick={handleExportPelanggan}
+            className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-medium text-xs rounded-xl flex items-center gap-2 transition"
+            id="export-pelanggan-btn"
+          >
+            <Download size={16} /> Export CSV/Excel
           </button>
           <button 
             onClick={handleOpenCreateForm}
