@@ -68,6 +68,33 @@ Salam Hangat,
 *E-Payment Kasir*`;
 };
 
+const formatWhatsAppArrearsMessage = (item: { pelanggan: Pelanggan; periode: string; nominal: number; jatuhTempo: string }): string => {
+  return `*SURAT TAGIHAN RESMI - TAGIHANPAY* ⚠️
+
+Yth. Bapak/Ibu *${item.pelanggan.nama}*,
+Kami menginfokan bahwa terdapat tagihan layanan aktif yang belum diselesaikan pada sistem kami.
+
+*Rincian Tagihan:*
+• ID Pelanggan: *${item.pelanggan.id}*
+• Nama Pelanggan: *${item.pelanggan.nama}*
+• Jenis Layanan: *${item.pelanggan.layanan}*
+• No ID Meter/Akun: *${item.pelanggan.noMeter}*
+• Periode Tagihan: *${item.periode}*
+• Batas Jatuh Tempo: *${item.jatuhTempo}*
+
+*TOTAL TUNGGAKAN: ${formatRupiah(item.nominal)}*
+
+Status: *BELUM LUNAS / MENUNGGAK* 🔴
+
+Mohon untuk segera melakukan pelunasan tagihan ini melalui Loket Resmi Pembayaran kami, Agen Terdekat, atau Transfer Bank. Pembayaran tepat waktu menjaga kesinambungan layanan dan menghindari denda keterlambatan atau denda denda pemutusan sementara.
+
+_Jika Anda sudah melakukan pembayaran, abaikan pemberitahuan ini._
+Terima kasih atas perhatiannya.
+
+Salam Hormat,
+*Unit Pelayanan TagihanPay*`;
+};
+
 interface TransaksiViewProps {
   pelangganList: Pelanggan[];
   transaksiList: Transaksi[];
@@ -92,6 +119,15 @@ export default function TransaksiView({
 
   // Modern alert notice state for new payment
   const [showAutoReceipt, setShowAutoReceipt] = useState<Transaksi | null>(null);
+
+  // State for showing the arrears billing notice modal
+  const [selectedArrearsItem, setSelectedArrearsItem] = useState<{
+    idKey: string; 
+    pelanggan: Pelanggan; 
+    periode: string; 
+    nominal: number; 
+    jatuhTempo: string; 
+  } | null>(null);
 
   // --- TRANS FORM STATE ---
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
@@ -1148,13 +1184,23 @@ export default function TransaksiView({
 
                       {/* Rapid Pay action */}
                       <td className="p-4 pr-6 text-right">
-                        <button
-                          onClick={() => handleArrearsPayNow(item.pelanggan, item.periode)}
-                          className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 font-bold text-[10px] text-white rounded-lg transition shadow-xs flex items-center justify-center gap-1 ml-auto"
-                        >
-                          Bayar Sekarang
-                          <ArrowRight size={12} />
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => setSelectedArrearsItem(item)}
+                            className="px-2.5 py-1.5 bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 font-bold text-[10px] rounded-lg transition flex items-center gap-1 cursor-pointer shadow-xs"
+                            title="Buka Surat / Struk Tagihan"
+                          >
+                            <Receipt size={12} />
+                            Surat Tagihan
+                          </button>
+                          <button
+                            onClick={() => handleArrearsPayNow(item.pelanggan, item.periode)}
+                            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 font-bold text-[10px] text-white rounded-lg transition flex items-center justify-center gap-1 cursor-pointer shadow-xs"
+                          >
+                            Bayar
+                            <ArrowRight size={12} />
+                          </button>
+                        </div>
                       </td>
 
                     </tr>
@@ -1541,6 +1587,163 @@ export default function TransaksiView({
               >
                 <Printer size={14} />
                 Cetak Kwitansi (Sistem)
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* --- ARREARS RECEIPT DIALOG MODAL (SURAT/STRUK TAGIHAN) --- */}
+      {selectedArrearsItem && (
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center z-50 p-4 transition-all animate-fadeIn print:fixed print:inset-0 print:bg-white print:z-50 print:p-0" id="arrears-modal">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] print:max-h-full print:w-full print:max-w-none print:shadow-none print:border-none animate-scaleIn">
+            
+            {/* Modal Actions Header */}
+            <div className="px-5 py-3.5 border-b border-light-200 flex justify-between items-center bg-rose-950 text-white print:hidden">
+              <h5 className="text-[10px] font-mono font-bold tracking-wider uppercase flex items-center gap-1.5">
+                <AlertTriangle className="text-rose-400" size={15} />
+                Pratinjau Surat & Struk Tagihan
+              </h5>
+              <button 
+                onClick={() => setSelectedArrearsItem(null)}
+                className="text-slate-300 hover:text-white transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Receipt Paper Area - Custom printed layout */}
+            <div className="p-6 md:p-8 space-y-6 overflow-y-auto bg-white text-slate-800 relative select-none" id="arrears-print-area">
+              
+              {/* Receipt Watermark decorative */}
+              <div className="absolute inset-x-0 top-1/3 flex items-center justify-center pointer-events-none opacity-[0.03] select-none transform -rotate-12">
+                <AlertTriangle size={180} className="text-rose-900" />
+              </div>
+
+              {/* Header Invoice Header */}
+              <div className="text-center space-y-1.5 border-b-2 border-dashed border-slate-200 pb-5">
+                <h4 className="text-base font-bold font-sans tracking-tight uppercase text-rose-800">SURAT PEMBERITAHUAN TAGIHAN</h4>
+                <p className="text-[10px] text-slate-500 font-mono tracking-wide">PORTAL PELAYANAN TAGIHAN RESMI - TAGIHANPAY</p>
+                <span className="inline-block px-3 py-0.5 bg-rose-50 text-rose-700 text-[10px] font-bold rounded-md font-mono mt-2 uppercase border border-rose-100">
+                  Status: BELUM LUNAS / MENUNGGAK
+                </span>
+              </div>
+
+              {/* Notice text */}
+              <div className="text-[11px] text-slate-600 leading-relaxed font-sans text-justify pt-1">
+                Diberitahukan kepada pelanggan terhormat, bahwa berdasarkan catatan sistem loket e-billing kami, terdapat kewajiban tagihan bulanan aktif Anda yang belum diselesaikan untuk periode berjalan berikut ini:
+              </div>
+
+              {/* Invoice details */}
+              <div className="space-y-4 text-xs font-mono">
+                
+                <div className="flex justify-between">
+                  <span className="text-slate-500">ID PELANGGAN:</span>
+                  <strong className="text-slate-900 font-bold">{selectedArrearsItem.pelanggan.id}</strong>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-slate-500">NAMA PELANGGAN:</span>
+                  <strong className="text-slate-900 font-bold">{selectedArrearsItem.pelanggan.nama}</strong>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-slate-500">JENIS LAYANAN:</span>
+                  <span className="text-slate-800 font-bold uppercase">{selectedArrearsItem.pelanggan.layanan}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-slate-500">NO ID METER / AKUN:</span>
+                  <span className="text-slate-800 font-bold">{selectedArrearsItem.pelanggan.noMeter}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-slate-500">PERIODE TUNGGAKAN:</span>
+                  <span className="text-slate-800 font-bold">{selectedArrearsItem.periode}</span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-slate-500">BATAS JATUH TEMPO:</span>
+                  <span className="text-rose-600 font-bold">{selectedArrearsItem.jatuhTempo}</span>
+                </div>
+
+                {/* Separator line */}
+                <div className="border-b border-dashed border-slate-200 py-1"></div>
+
+                {/* Amount details */}
+                <div className="p-3 bg-rose-50/30 rounded-lg flex justify-between items-center border border-rose-100/50">
+                  <span className="font-bold text-rose-800">TOTAL TAGIHAN:</span>
+                  <span className="text-base font-bold text-rose-700 font-mono">
+                    {formatRupiah(selectedArrearsItem.nominal)}
+                  </span>
+                </div>
+
+                {/* Bank / Loket info */}
+                <div className="p-3 bg-slate-50 border border-slate-100 rounded-lg space-y-1.5 text-[10px] text-slate-550 select-text leading-relaxed font-sans">
+                  <strong className="text-slate-700 block font-semibold">💳 SALURAN METODE PEMBAYARAN RESMI:</strong>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    <li>Setoran Tunai di Loket Kasir TagihanPay</li>
+                    <li>Transfer Bank BCA / Mandiri / BRI (Hubungi Admin)</li>
+                    <li>Pembayaran Instan E-Wallet (QRIS / ShopeePay / OVO)</li>
+                  </ul>
+                </div>
+
+              </div>
+
+              {/* Signatures zone */}
+              <div className="grid grid-cols-2 pt-6 text-[10px] font-mono text-center gap-4 text-slate-500 border-t border-slate-100">
+                <div>
+                  <p className="pb-12">Penerima Tagihan,</p>
+                  <p className="font-bold text-slate-800 underline text-[11px]">{selectedArrearsItem.pelanggan.nama}</p>
+                </div>
+                <div>
+                  <p className="pb-12">Petugas Administrasi,</p>
+                  <p className="font-bold text-slate-800 underline text-[11px]">Unit Pelayanan TagihanPay</p>
+                </div>
+              </div>
+
+              {/* Print Footer Tagline */}
+              <div className="text-center text-[9px] text-slate-400 pt-3 flex flex-col items-center gap-0.5 font-mono select-none">
+                <span>Surat pemberitahuan ini diterbitkan resmi secara otomatis oleh sistem TagihanPay.</span>
+                <span>Mohon selesaikan kewajiban sebelum tenggat waktu berlalu. Terima kasih.</span>
+              </div>
+
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row gap-2 print:hidden">
+              <button
+                onClick={() => setSelectedArrearsItem(null)}
+                className="flex-1 py-2.5 border border-slate-250 hover:bg-slate-100 font-semibold text-xs text-slate-650 rounded-xl transition cursor-pointer text-center"
+              >
+                Tutup
+              </button>
+              <button
+                onClick={() => {
+                  if (selectedArrearsItem) {
+                    if (selectedArrearsItem.pelanggan.noTelp) {
+                      const phone = formatPhoneForWhatsApp(selectedArrearsItem.pelanggan.noTelp);
+                      const msg = formatWhatsAppArrearsMessage(selectedArrearsItem);
+                      window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(msg)}`, "_blank");
+                    } else {
+                      alert("Nomor telepon pelanggan tidak ditemukan.");
+                    }
+                  }
+                }}
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition flex justify-center items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-600/10"
+              >
+                <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.456 5.704 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                </svg>
+                Kirim Surat WA
+              </button>
+              <button
+                onClick={triggerBrowserPrint}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition flex justify-center items-center gap-1.5 cursor-pointer shadow-lg shadow-rose-600/10"
+              >
+                <Printer size={14} />
+                Cetak Tagihan
               </button>
             </div>
 
