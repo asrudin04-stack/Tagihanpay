@@ -129,10 +129,7 @@ export default function TransaksiView({
     jatuhTempo: string; 
   } | null>(null);
 
-  // Multi-selected arrears keys
-  const [selectedArrearsKeys, setSelectedArrearsKeys] = useState<string[]>([]);
-  // State for showing the mass print preview modal
-  const [showMassPrintModal, setShowMassPrintModal] = useState<boolean>(false);
+
 
   // --- TRANS FORM STATE ---
   const [selectedCustomerId, setSelectedCustomerId] = useState("");
@@ -593,19 +590,7 @@ export default function TransaksiView({
     setActiveSubTab("input");
   };
 
-  const handleSelectArrearsRow = (idKey: string) => {
-    setSelectedArrearsKeys(prev => 
-      prev.includes(idKey) ? prev.filter(k => k !== idKey) : [...prev, idKey]
-    );
-  };
 
-  const handleSelectAllArrears = (checked: boolean) => {
-    if (checked) {
-      setSelectedArrearsKeys(filteredArrearsList.map(item => item.idKey));
-    } else {
-      setSelectedArrearsKeys([]);
-    }
-  };
 
   // Filter history
   const filteredHistory = useMemo(() => {
@@ -1147,15 +1132,7 @@ export default function TransaksiView({
               <table className="w-full border-collapse text-left text-slate-600">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-mono uppercase tracking-wider text-slate-500 font-bold">
-                    <th className="p-4 pl-6 w-12 text-center">
-                      <input 
-                        type="checkbox" 
-                        className="w-4 h-4 rounded border-slate-350 text-indigo-650 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
-                        checked={filteredArrearsList.length > 0 && selectedArrearsKeys.length === filteredArrearsList.length}
-                        onChange={(e) => handleSelectAllArrears(e.target.checked)}
-                      />
-                    </th>
-                    <th className="p-4">NAMA PELANGGAN</th>
+                    <th className="p-4 pl-6">NAMA PELANGGAN</th>
                     <th className="p-4">JENIS LAYANAN</th>
                     <th className="p-4">METER / CLIENT ID</th>
                     <th className="p-4">BULAN TUNGGAKAN</th>
@@ -1166,20 +1143,10 @@ export default function TransaksiView({
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs animate-fadeIn">
                   {filteredArrearsList.map((item) => (
-                    <tr key={item.idKey} className={`hover:bg-rose-50/20 transition duration-300 ${selectedArrearsKeys.includes(item.idKey) ? 'bg-rose-50/10' : ''}`}>
+                    <tr key={item.idKey} className="hover:bg-rose-50/20 transition duration-300">
                       
-                      {/* Checkbox */}
-                      <td className="p-4 pl-6 text-center">
-                        <input 
-                          type="checkbox" 
-                          className="w-4 h-4 rounded border-slate-350 text-indigo-650 focus:ring-indigo-500 accent-indigo-600 cursor-pointer"
-                          checked={selectedArrearsKeys.includes(item.idKey)}
-                          onChange={() => handleSelectArrearsRow(item.idKey)}
-                        />
-                      </td>
-
                       {/* Customer Name */}
-                      <td className="p-4">
+                      <td className="p-4 pl-6">
                         <div>
                           <strong className="text-slate-800 block font-bold">{item.pelanggan.nama}</strong>
                           <span className="font-mono text-[10px] text-slate-400">{item.pelanggan.id}</span>
@@ -1263,60 +1230,7 @@ export default function TransaksiView({
             </div>
           </div>
 
-          {/* Floating Actions Panel for Multi-selected Arrears */}
-          {selectedArrearsKeys.length > 0 && (
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 border border-slate-800 z-45 max-w-[95vw] sm:max-w-xl animate-fadeIn print:hidden">
-              <div className="flex flex-col">
-                <span className="text-xs font-bold text-rose-455">Terpilih {selectedArrearsKeys.length} Tagihan</span>
-                <span className="text-[10px] text-slate-400 font-mono">
-                  Menggunakan {Math.ceil(selectedArrearsKeys.length / 5)} Lembar A4
-                </span>
-              </div>
-              <div className="h-8 w-px bg-slate-800"></div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowMassPrintModal(true)}
-                  className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-rose-600/10"
-                >
-                  <Printer size={13} />
-                  Cetak Massal (A4)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const selectedItems = arrearsList.filter(item => selectedArrearsKeys.includes(item.idKey));
-                    if (selectedItems.length === 0) return;
-                    
-                    if (confirm(`Apakah Anda ingin mengirim surat tagihan via WhatsApp ke ${selectedItems.length} pelanggan secara berurutan?`)) {
-                      selectedItems.forEach((item, idx) => {
-                        setTimeout(() => {
-                          if (item.pelanggan.noTelp) {
-                            const phone = formatPhoneForWhatsApp(item.pelanggan.noTelp);
-                            const msg = formatWhatsAppArrearsMessage(item);
-                            window.open(`https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(msg)}`, "_blank");
-                          }
-                        }, idx * 1200);
-                      });
-                    }
-                  }}
-                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-lg shadow-emerald-600/10"
-                >
-                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.456 5.704 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                  </svg>
-                  WA Massal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedArrearsKeys([])}
-                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-350 font-bold text-[11px] rounded-xl transition cursor-pointer"
-                >
-                  Batal
-                </button>
-              </div>
-            </div>
-          )}
+
         </div>
       )}
 
@@ -1843,256 +1757,76 @@ export default function TransaksiView({
         </div>
       )}
 
-      {/* --- BATCH / MASS PRINT PREVIEW MODAL (5 NOTICES PER A4) --- */}
-      {showMassPrintModal && (
-        <div className="fixed inset-0 bg-slate-900/90 z-50 overflow-y-auto flex flex-col print:hidden animate-fadeIn">
-          {/* Conditionally inject print visibility styles */}
-          <style dangerouslySetInnerHTML={{ __html: `
-            @media print {
-              body * {
-                visibility: hidden !important;
-              }
-              #mass-print-container, #mass-print-container * {
-                visibility: visible !important;
-              }
-              #mass-print-container {
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
-                width: 210mm !important;
-                height: 297mm !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                background: white !important;
-              }
-            }
-          `}} />
-
-          {/* Top Bar Actions Panel */}
-          <div className="bg-slate-900 text-white border-b border-slate-800 px-6 py-4 sticky top-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-10 shadow-lg">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-rose-500/10 text-rose-400 rounded-xl">
-                <Printer size={22} />
-              </div>
-              <div>
-                <h3 className="text-sm font-extrabold tracking-tight">Pratinjau Cetak Massal (Kertas A4)</h3>
-                <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                  Mencetak <strong className="text-white">{selectedArrearsKeys.length}</strong> surat tagihan, terdistribusi ke dalam <strong className="text-white">{Math.ceil(selectedArrearsKeys.length / 5)}</strong> lembar kertas A4 (Maks. 5 per lembar).
-                </p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setShowMassPrintModal(false)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl transition cursor-pointer"
-              >
-                Tutup Pratinjau
-              </button>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition flex items-center gap-2 cursor-pointer shadow-lg shadow-rose-600/30"
-              >
-                <Printer size={15} />
-                Cetak Sekarang
-              </button>
-            </div>
-          </div>
-
-          {/* Scrollable WYSIWYG A4 Canvas */}
-          <div className="flex-1 bg-slate-950 p-4 sm:p-8 overflow-y-auto flex flex-col items-center gap-6">
-            <div className="text-center text-slate-500 text-[10px] max-w-md font-mono select-none">
-              ℹ️ Tampilan lembaran di bawah mensimulasikan kertas A4 asli dengan batas potong (garis putus-putus) untuk memudahkan pembagian.
-            </div>
-
-            {/* Render realistic sheets */}
-            {(() => {
-              const selectedItems = arrearsList.filter(item => selectedArrearsKeys.includes(item.idKey));
-              const chunks: typeof selectedItems[] = [];
-              for (let i = 0; i < selectedItems.length; i += 5) {
-                chunks.push(selectedItems.slice(i, i + 5));
-              }
-
-              return chunks.map((chunk, pageIdx) => (
-                <div 
-                  key={pageIdx}
-                  className="w-[210mm] h-[297mm] bg-white border border-slate-200 shadow-2xl p-6 rounded-sm relative flex flex-col justify-between shrink-0 select-none text-slate-800"
-                  style={{ boxSizing: 'border-box' }}
-                >
-                  {/* Page Indicator floating */}
-                  <div className="absolute -left-16 top-4 bg-slate-800 text-slate-400 border border-slate-700 font-mono text-[10px] px-2.5 py-1 rounded-md hidden lg:block">
-                    Halaman {pageIdx + 1}
-                  </div>
-
-                  {chunk.map((item, itemIdx) => (
-                    <div 
-                      key={item.idKey}
-                      className="border-2 border-dashed border-slate-200 hover:border-rose-200 hover:bg-rose-50/5 p-4 rounded-xl flex flex-col justify-between text-[11px] relative bg-white transition duration-200"
-                      style={{
-                        height: '52mm',
-                        boxSizing: 'border-box'
-                      }}
-                    >
-                      {/* Watermark in each slip */}
-                      <div className="absolute right-6 top-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none transform -rotate-12">
-                        <AlertTriangle size={70} className="text-rose-900" />
-                      </div>
-
-                      {/* Header Slip */}
-                      <div className="flex justify-between items-center border-b border-dashed border-slate-200 pb-2 mb-2">
-                        <div>
-                          <h4 className="font-extrabold text-rose-800 uppercase tracking-tight text-[11px] leading-none">SURAT PEMBERITAHUAN TAGIHAN</h4>
-                          <p className="text-[8px] text-slate-400 font-mono tracking-wide leading-none mt-1">TAGIHANPAY • LOKET RESMI PELAYANAN</p>
-                        </div>
-                        <span className="px-2 py-0.5 bg-rose-50 text-rose-700 text-[8px] font-bold rounded-md font-mono border border-rose-100 uppercase">
-                          BELUM LUNAS
-                        </span>
-                      </div>
-
-                      {/* Info grid */}
-                      <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-[10px] font-mono leading-tight">
-                        <div className="flex justify-between">
-                          <span className="text-slate-450">ID CLIENT:</span>
-                          <span className="text-slate-800 font-bold">{item.pelanggan.id}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-450">LAYANAN:</span>
-                          <span className="text-slate-800 font-bold uppercase">{item.pelanggan.layanan}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-450">NAMA:</span>
-                          <span className="text-slate-800 font-bold truncate max-w-[140px]">{item.pelanggan.nama}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-450">METER/AKUN:</span>
-                          <span className="text-slate-800 font-semibold truncate max-w-[140px]">{item.pelanggan.noMeter}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-450">PERIODE:</span>
-                          <span className="text-slate-800 font-bold">{item.periode}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-450">JATUH TEMPO:</span>
-                          <span className="text-rose-600 font-bold">{item.jatuhTempo}</span>
-                        </div>
-                      </div>
-
-                      {/* Footer & Total */}
-                      <div className="flex justify-between items-center bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg mt-2">
-                        <div className="text-[8px] text-slate-500 max-w-[220px] leading-relaxed font-sans">
-                          Selesaikan pembayaran Anda segera di Loket Kasir atau Agen TagihanPay terdekat.
-                        </div>
-                        <div className="text-right font-mono">
-                          <span className="text-[8px] text-slate-400 block leading-none mb-0.5">TOTAL TAGIHAN:</span>
-                          <span className="text-xs font-extrabold text-rose-700">{formatRupiah(item.nominal)}</span>
-                        </div>
-                      </div>
-
-                      {/* Cut line indicator */}
-                      <div className="absolute bottom-1 right-3 text-[7px] text-slate-350 font-mono tracking-widest uppercase select-none pointer-events-none">
-                        ✂️ POTONG DISINI ----------------------------
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ));
-            })()}
-          </div>
-        </div>
-      )}
-
-      {/* --- ACTUAL PRINT CONTAINER (HIDDEN ON SCREEN, INJECTED DIRECTLY ON PRINT) --- */}
-      <div className="hidden print:block bg-white text-slate-900 font-sans p-0 m-0 w-full" id="mass-print-container">
-        {(() => {
-          const selectedItems = arrearsList.filter(item => selectedArrearsKeys.includes(item.idKey));
-          const chunks: typeof selectedItems[] = [];
-          for (let i = 0; i < selectedItems.length; i += 5) {
-            chunks.push(selectedItems.slice(i, i + 5));
+      {/* Global CSS Inject to target 52mm Thermal Printer layout on window.print() */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page {
+            size: 52mm auto !important;
+            margin: 0 !important;
           }
-
-          return chunks.map((chunk, pageIdx) => (
-            <div 
-              key={pageIdx} 
-              className="w-full flex flex-col justify-between animate-fadeIn"
-              style={{
-                height: '290mm',
-                maxHeight: '290mm',
-                pageBreakAfter: 'always',
-                boxSizing: 'border-box',
-                padding: '4mm 6mm'
-              }}
-            >
-              {chunk.map((item, itemIdx) => (
-                <div 
-                  key={item.idKey}
-                  className="border-2 border-dashed border-slate-300 p-3 rounded-lg flex flex-col justify-between text-[11px] relative bg-white overflow-hidden"
-                  style={{
-                    height: '52mm',
-                    boxSizing: 'border-box',
-                  }}
-                >
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none transform -rotate-6">
-                    <AlertTriangle size={70} className="text-rose-900" />
-                  </div>
-
-                  <div className="flex justify-between items-center border-b border-dashed border-slate-200 pb-1.5 mb-1.5">
-                    <div>
-                      <h4 className="font-bold text-rose-800 uppercase tracking-tight text-[11px] leading-none">SURAT PEMBERITAHUAN TAGIHAN</h4>
-                      <p className="text-[8px] text-slate-400 font-mono tracking-wide leading-none mt-1">TAGIHANPAY • LOKET RESMI PELAYANAN</p>
-                    </div>
-                    <span className="px-2 py-0.5 bg-rose-50 text-rose-700 text-[8px] font-bold rounded-md font-mono border border-rose-100 uppercase">
-                      BELUM LUNAS
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px] font-mono leading-tight">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">ID CLIENT:</span>
-                      <span className="text-slate-800 font-bold">{item.pelanggan.id}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">LAYANAN:</span>
-                      <span className="text-slate-800 font-bold uppercase">{item.pelanggan.layanan}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">NAMA:</span>
-                      <span className="text-slate-800 font-bold truncate max-w-[120px]">{item.pelanggan.nama}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">METER/AKUN:</span>
-                      <span className="text-slate-800 font-semibold truncate max-w-[120px]">{item.pelanggan.noMeter}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">PERIODE:</span>
-                      <span className="text-slate-800 font-bold">{item.periode}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">JATUH TEMPO:</span>
-                      <span className="text-rose-600 font-bold">{item.jatuhTempo}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center bg-rose-50/20 px-2 py-1 rounded border border-rose-100/50 mt-1.5">
-                    <div className="text-[8px] text-slate-500 max-w-[200px] leading-tight font-sans">
-                      Bayar segera di Loket Resmi atau Transfer Bank BCA/Mandiri sebelum layanan dinonaktifkan.
-                    </div>
-                    <div className="text-right font-mono">
-                      <span className="text-[8px] text-slate-500 block leading-none">TOTAL TAGIHAN:</span>
-                      <span className="text-xs font-extrabold text-rose-700">{formatRupiah(item.nominal)}</span>
-                    </div>
-                  </div>
-
-                  <div className="absolute bottom-1 right-2 text-[7px] text-slate-350 font-mono tracking-widest uppercase">
-                    POTONG DISINI ----------------------------
-                  </div>
-                </div>
-              ))}
-            </div>
-          ));
-        })()}
-      </div>
+          html, body {
+            width: 52mm !important;
+            max-width: 52mm !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            color: #000000 !important;
+            font-size: 8px !important;
+          }
+          body * {
+            visibility: hidden !important;
+          }
+          #receipt-print-area, #receipt-print-area *,
+          #arrears-print-area, #arrears-print-area * {
+            visibility: visible !important;
+          }
+          #receipt-print-area, #arrears-print-area {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 52mm !important;
+            max-width: 52mm !important;
+            padding: 2mm !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            background: white !important;
+            color: black !important;
+          }
+          /* Compact spacing specifically for thermal receipt paper */
+          .print\\:space-y-2\\.5 > :not([hidden]) ~ :not([hidden]) {
+            --tw-space-y-reverse: 0 !important;
+            margin-top: 0.35rem !important;
+            margin-bottom: 0.35rem !important;
+          }
+          .print\\:space-y-1\\.5 > :not([hidden]) ~ :not([hidden]) {
+            --tw-space-y-reverse: 0 !important;
+            margin-top: 0.2rem !important;
+            margin-bottom: 0.2rem !important;
+          }
+          .print\\:pb-6 {
+            padding-bottom: 1.25rem !important;
+          }
+          .print\\:pt-3 {
+            padding-top: 0.5rem !important;
+          }
+          .text-base {
+            font-size: 11px !important;
+          }
+          .text-xs {
+            font-size: 8px !important;
+          }
+          .text-[10px] {
+            font-size: 7px !important;
+          }
+          .text-[9px] {
+            font-size: 6px !important;
+          }
+          .p-6, .md\\:p-8 {
+            padding: 2mm !important;
+          }
+        }
+      `}} />
 
     </div>
   );
