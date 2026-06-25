@@ -41,6 +41,7 @@ export interface Transaksi {
   tanggalBayar: string; // ISO timestamp or localized date
   keterangan?: string;
   noReff?: string; // Reference code
+  status?: 'LUNAS' | 'MENUNGGU';
 }
 
 // Generate default mock data to seed local storage on first launch
@@ -166,7 +167,8 @@ export const INITIAL_TRANSAKSI: Transaksi[] = [
     metodePembayaran: "Transfer",
     tanggalBayar: "2026-06-10",
     keterangan: "Pembayaran PLN Juni OK",
-    noReff: "REF-PLN-3129"
+    noReff: "REF-PLN-3129",
+    status: "LUNAS"
   },
   {
     id: "TX-202606-0002",
@@ -178,7 +180,8 @@ export const INITIAL_TRANSAKSI: Transaksi[] = [
     metodePembayaran: "Tunai",
     tanggalBayar: "2026-06-12",
     keterangan: "Lunas Bayar Kasir",
-    noReff: "REF-PAM-4021"
+    noReff: "REF-PAM-4021",
+    status: "LUNAS"
   },
   {
     id: "TX-202606-0003",
@@ -190,7 +193,8 @@ export const INITIAL_TRANSAKSI: Transaksi[] = [
     metodePembayaran: "Transfer",
     tanggalBayar: "2026-06-03",
     keterangan: "M-Banking Transfer",
-    noReff: "REF-WIF-8812"
+    noReff: "REF-WIF-8812",
+    status: "MENUNGGU"
   },
   {
     id: "TX-202605-0001",
@@ -202,7 +206,8 @@ export const INITIAL_TRANSAKSI: Transaksi[] = [
     metodePembayaran: "Transfer",
     tanggalBayar: "2026-05-09",
     keterangan: "Lunas",
-    noReff: "REF-PLN-1092"
+    noReff: "REF-PLN-1092",
+    status: "LUNAS"
   },
   {
     id: "TX-202605-0002",
@@ -214,7 +219,8 @@ export const INITIAL_TRANSAKSI: Transaksi[] = [
     metodePembayaran: "Tunai",
     tanggalBayar: "2026-05-05",
     keterangan: "Lunas",
-    noReff: "REF-WIF-1209"
+    noReff: "REF-WIF-1209",
+    status: "LUNAS"
   },
   {
     id: "TX-202605-0003",
@@ -226,7 +232,8 @@ export const INITIAL_TRANSAKSI: Transaksi[] = [
     metodePembayaran: "Tunai",
     tanggalBayar: "2026-05-18",
     keterangan: "Bayar di loket",
-    noReff: "REF-PLN-4421"
+    noReff: "REF-PLN-4421",
+    status: "MENUNGGU"
   }
 ];
 

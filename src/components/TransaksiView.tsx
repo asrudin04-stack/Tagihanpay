@@ -21,6 +21,7 @@ import {
   Activity,
   ArrowRight,
   Sparkles,
+  Layers,
   X
 } from "lucide-react";
 import { 
@@ -156,6 +157,8 @@ export default function TransaksiView({
   // --- HISTORY SEARCH STATE ---
   const [historySearch, setHistorySearch] = useState("");
   const [historyLayanan, setHistoryLayanan] = useState("SEMUA");
+  const [historyStatus, setHistoryStatus] = useState<string>("SEMUA");
+  const [statusInput, setStatusInput] = useState<'LUNAS' | 'MENUNGGU'>("LUNAS");
 
   // --- CUSTOMER SEARCH IN FORM ---
   const [customerSearchText, setCustomerSearchText] = useState("");
@@ -487,7 +490,8 @@ export default function TransaksiView({
       metodePembayaran,
       tanggalBayar: new Date().toISOString().split("T")[0],
       keterangan: keterangan.trim() || `Pembayaran Tagihan ${selectedCustomerInfo.layanan} Periode ${getMonthLabel(periodeBulan)} ${periodeTahun}`,
-      noReff: `REF-${selectedCustomerInfo.layanan}-${Math.floor(1000 + Math.random() * 9000)}`
+      noReff: `REF-${selectedCustomerInfo.layanan}-${Math.floor(1000 + Math.random() * 9000)}`,
+      status: statusInput
     };
 
     const customerPhone = selectedCustomerInfo.noTelp;
@@ -611,9 +615,12 @@ export default function TransaksiView({
       
       const matchesLayanan = historyLayanan === "SEMUA" || tx.layanan === historyLayanan;
 
-      return matchesSearch && matchesLayanan;
+      const txStatus = tx.status || "LUNAS";
+      const matchesStatus = historyStatus === "SEMUA" || txStatus === historyStatus;
+
+      return matchesSearch && matchesLayanan && matchesStatus;
     });
-  }, [transaksiList, historySearch, historyLayanan]);
+  }, [transaksiList, historySearch, historyLayanan, historyStatus]);
 
   // Handle print layout trigger
   const triggerBrowserPrint = () => {
@@ -807,7 +814,7 @@ export default function TransaksiView({
               </div>
 
               {/* Biaya input */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 
                 {/* Jumlah Bayar - can type but autofilled */}
                 <div className="space-y-1">
@@ -846,6 +853,29 @@ export default function TransaksiView({
                         }`}
                       >
                         {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Status Pembayaran */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-mono uppercase text-slate-500 font-semibold block">STATUS PEMBAYARAN</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(["LUNAS", "MENUNGGU"] as const).map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setStatusInput(s)}
+                        className={`py-2 px-3 text-xs font-bold rounded-lg border text-center transition cursor-pointer ${
+                          statusInput === s 
+                            ? s === "LUNAS"
+                              ? "bg-emerald-600 text-white border-emerald-600 shadow-sm"
+                              : "bg-amber-500 text-white border-amber-500 shadow-sm"
+                            : "bg-white text-slate-650 border-slate-200 hover:bg-slate-50"
+                        }`}
+                      >
+                        {s}
                       </button>
                     ))}
                   </div>
@@ -956,7 +986,7 @@ export default function TransaksiView({
         <div className="space-y-4" id="riwayat-section">
           
           {/* Filtering row for transaction logs */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 bg-white p-4 rounded-xl border border-slate-100 shadow-xs">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3.5 bg-white p-4 rounded-xl border border-slate-100 shadow-xs">
             <div className="relative md:col-span-2">
               <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
               <input 
@@ -969,16 +999,29 @@ export default function TransaksiView({
             </div>
 
             <div className="flex items-center gap-2">
-              <Filter size={14} className="text-slate-400" />
+              <Filter size={14} className="text-slate-400 font-bold shrink-0" />
               <select
                 value={historyLayanan}
                 onChange={(e) => setHistoryLayanan(e.target.value)}
-                className="py-1.5 w-full bg-slate-50 text-xs border border-slate-250 rounded-lg focus:outline-hidden focus:border-indigo-505 font-medium text-slate-750"
+                className="py-1.5 w-full bg-slate-50 text-xs border border-slate-250 rounded-lg focus:outline-hidden focus:border-indigo-505 font-medium text-slate-750 bg-white"
               >
                 <option value="SEMUA">Semua Layanan</option>
                 <option value="PLN">Khusus PLN (Listrik)</option>
                 <option value="PDAM">Khusus PDAM (Air)</option>
                 <option value="WIFI">Khusus WIFI (Internet)</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Layers size={14} className="text-slate-400 font-bold shrink-0" />
+              <select
+                value={historyStatus}
+                onChange={(e) => setHistoryStatus(e.target.value)}
+                className="py-1.5 w-full bg-slate-50 text-xs border border-slate-250 rounded-lg focus:outline-hidden focus:border-indigo-505 font-medium text-slate-750 bg-white"
+              >
+                <option value="SEMUA">Semua Status</option>
+                <option value="LUNAS">LUNAS</option>
+                <option value="MENUNGGU">MENUNGGU</option>
               </select>
             </div>
           </div>
@@ -994,6 +1037,7 @@ export default function TransaksiView({
                     <th className="p-4">LAYANAN</th>
                     <th className="p-4">PERIODE</th>
                     <th className="p-4">TANGGAL BAYAR</th>
+                    <th className="p-4">STATUS</th>
                     <th className="p-4">NOMINAL</th>
                     <th className="p-4 pr-6 text-right">AKSI RECEIPT</th>
                   </tr>
@@ -1037,6 +1081,17 @@ export default function TransaksiView({
                         {/* Payment date */}
                         <td className="p-4 font-mono text-slate-500">
                           {new Date(tx.tanggalBayar).toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </td>
+
+                        {/* Status Badge */}
+                        <td className="p-4">
+                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            (tx.status || "LUNAS") === "LUNAS" 
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
+                              : "bg-amber-50 text-amber-700 border border-amber-200"
+                          }`}>
+                            {(tx.status || "LUNAS")}
+                          </span>
                         </td>
 
                         {/* Nominal amount paid */}
@@ -1475,8 +1530,12 @@ export default function TransaksiView({
               <div className="text-center space-y-1 border-b-2 border-dashed border-slate-200 pb-3 print:pb-2">
                 <h4 className="text-base font-bold font-sans tracking-tight uppercase leading-tight">KWITANSI DIGITAL RESMI</h4>
                 <p className="text-[10px] text-slate-500 font-mono tracking-wide leading-tight">PORTAL PEMBAYARAN TAGIHAN ONLINE</p>
-                <span className="inline-block px-3 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-md font-mono mt-1 uppercase border border-emerald-100">
-                  Status: LUNAS / TERBAYAR
+                <span className={`inline-block px-3 py-0.5 text-[10px] font-bold rounded-md font-mono mt-1 uppercase border ${
+                  (showAutoReceipt.status || "LUNAS") === "LUNAS"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                    : "bg-amber-50 text-amber-700 border-amber-100"
+                }`}>
+                  Status: {(showAutoReceipt.status || "LUNAS")}
                 </span>
               </div>
 

@@ -375,3 +375,107 @@ export const importDataFromSpreadsheet = async (
 
   return { pelanggan, transaksi };
 };
+
+/**
+ * Uploads a JSON backup of data to Google Drive
+ */
+export const backupDataToDrive = async (token: string, payload: any, fileName?: string): Promise<any> => {
+  const boundary = "tagihanpay_backup_boundary";
+  const delimiter = `\r\n--${boundary}\r\n`;
+  const close_delim = `\r\n--${boundary}--`;
+
+  const finalFileName = fileName || `TagihanPay_CloudBackup_${new Date().toISOString().split("T")[0]}_${new Date().toLocaleTimeString("id").replace(/:/g, "-")}.json`;
+
+  const metadata = {
+    name: finalFileName,
+    mimeType: "application/json",
+    description: "TagihanPay Cloud Backup File"
+  };
+
+  const multipartRequestBody =
+    delimiter +
+    "Content-Type: application/json; charset=UTF-8\r\n\r\n" +
+    JSON.stringify(metadata) +
+    delimiter +
+    "Content-Type: application/json\r\n\r\n" +
+    JSON.stringify(payload) +
+    close_delim;
+
+  const url = "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": `multipart/related; boundary=${boundary}`
+    },
+    body: multipartRequestBody
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Google Drive API Error: ${response.statusText} (${errText})`);
+  }
+
+  return response.json();
+};
+
+/**
+ * Lists backups in Google Drive
+ */
+export const listDriveBackups = async (token: string): Promise<any[]> => {
+  const url = "https://www.googleapis.com/drive/v3/files?q=name contains 'TagihanPay_CloudBackup' and trashed = false&orderBy=createdTime desc&fields=files(id, name, createdTime, size)";
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Google Drive API Error: ${response.statusText} (${errText})`);
+  }
+
+  const data = await response.json();
+  return data.files || [];
+};
+
+/**
+ * Downloads backup file content
+ */
+export const downloadDriveBackup = async (token: string, fileId: string): Promise<any> => {
+  const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Google Drive API Error: ${response.statusText} (${errText})`);
+  }
+
+  return response.json();
+};
+
+/**
+ * Deletes a backup file from Google Drive
+ */
+export const deleteDriveBackup = async (token: string, fileId: string): Promise<void> => {
+  const url = `https://www.googleapis.com/drive/v3/files/${fileId}`;
+  const response = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      "Authorization": `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Google Drive API Error: ${response.statusText} (${errText})`);
+  }
+};
+

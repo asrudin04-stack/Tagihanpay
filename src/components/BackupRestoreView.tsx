@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { 
   Database, 
   Download, 
@@ -8,9 +8,25 @@ import {
   RefreshCw, 
   Info,
   Trash2,
-  FileCheck
+  FileCheck,
+  Cloud,
+  CloudUpload,
+  CloudDownload,
+  Loader2,
+  Lock,
+  ExternalLink,
+  Check
 } from "lucide-react";
 import { Pelanggan, Transaksi, TanggalPembayaran, BiayaTarif } from "../types";
+import { 
+  initAuth, 
+  googleSignIn, 
+  getAccessToken,
+  backupDataToDrive,
+  listDriveBackups,
+  downloadDriveBackup,
+  deleteDriveBackup
+} from "../lib/googleSheets";
 
 interface BackupRestoreViewProps {
   pelangganList: Pelanggan[];
@@ -36,15 +52,197 @@ export default function BackupRestoreView({
   onClearAllData,
   onResetToDefault
 }: BackupRestoreViewProps) {
-  const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const showStatus = (type: "success" | "error", text: string) => {
+  // Cloud Backups integration states
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+  const [isProcessingCloud, setIsProcessingCloud] = useState(false);
+  const [driveBackups, setDriveBackups] = useState<any[]>([]);
+
+  // Monitor Auth State for Cloud integration
+  useEffect(() => {
+    const unsub = initAuth(
+      (user, retrievedToken) => {
+        setIsAuthenticated(true);
+        setUserEmail(user.email);
+        setDisplayName(user.displayName);
+        setToken(retrievedToken);
+        setIsLoadingAuth(false);
+      },
+      () => {
+        setIsAuthenticated(false);
+        setUserEmail(null);
+        setDisplayName(null);
+        setToken(null);
+        setIsLoadingAuth(false);
+      }
+    );
+    return () => unsub();
+  }, []);
+
+  // Fetch backups from Google Drive once authenticated
+  useEffect(() => {
+    if (isAuthenticated && token) {
+      loadCloudBackups(token);
+    } else {
+      setDriveBackups([]);
+    }
+  }, [isAuthenticated, token]);
+
+  const loadCloudBackups = async (activeToken: string) => {
+    try {
+      setIsProcessingCloud(true);
+      const backups = await listDriveBackups(activeToken);
+      setDriveBackups(backups);
+    } catch (err: any) {
+      console.error("Gagal memuat list backup dari cloud: ", err);
+    } finally {
+      setIsProcessingCloud(false);
+    }
+  };
+
+  const handleLoginGoogle = async () => {
+    setIsProcessingCloud(true);
+    try {
+      const res = await googleSignIn();
+      if (res) {
+        setIsAuthenticated(true);
+        setUserEmail(res.user.email);
+        setDisplayName(res.user.displayName);
+        setToken(res.accessToken);
+        showStatus("success", "Berhasil terhubung dengan Google Drive!");
+        loadCloudBackups(res.accessToken);
+      }
+    } catch (err: any) {
+      showStatus("error", "Gagal otorisasi Google: " + err.message);
+    } finally {
+      setIsProcessingCloud(false);
+    }
+  };
+
+  const handleCloudBackup = async () => {
+    const activeToken = token || getAccessToken();
+    if (!activeToken) {
+      showStatus("error", "Silakan login Google Drive terlebih dahulu.");
+      return;
+    }
+
+    setIsProcessingCloud(true);
+    try {
+      const backupData = {
+        appName: "TagihanPay",
+        version: "2.0",
+        backupDate: new Date().toISOString(),
+        metadata: {
+          generatedBy: "System Cloud Backup Manager",
+          environment: "Cloud Google Drive Integration"
+        },
+        counts: {
+          pelanggan: pelangganList.length,
+          transaksi: transaksiList.length,
+          tanggal: tanggalList.length,
+          biaya: biayaList.length
+        },
+        payload: {
+          pelanggan: pelangganList,
+          transaksi: transaksiList,
+          tanggal: tanggalList,
+          biaya: biayaList
+        }
+      };
+
+      const dateStr = new Date().toISOString().split("T")[0];
+      const timeStr = new Date().toLocaleTimeString("id", { hour: "2-digit", minute: "2-digit" }).replace(/:/g, "-");
+      const cloudFileName = `TagihanPay_CloudBackup_${dateStr}_${timeStr}.json`;
+
+      await backupDataToDrive(activeToken, backupData, cloudFileName);
+      showStatus("success", "Backup database berhasil diunggah ke Google Drive!");
+      await loadCloudBackups(activeToken);
+    } catch (err: any) {
+      showStatus("error", "Gagal mencadangkan data ke cloud: " + err.message);
+    } finally {
+      setIsProcessingCloud(false);
+    }
+  };
+
+  const handleCloudRestore = async (fileId: string, fileName: string) => {
+    const activeToken = token || getAccessToken();
+    if (!activeToken) {
+      showStatus("error", "Silakan login Google Drive terlebih dahulu.");
+      return;
+    }
+
+    const confirmRestore = window.confirm(
+      `⚠️ KONFIRMASI RESTORE CLOUD\n\nApakah Anda yakin ingin memulihkan cadangan dari berkas "${fileName}"?\n\n` +
+      `🚨 PERINGATAN: Semua data aktif saat ini di browser akan DIHAPUS & DIGANTI dengan data cadangan cloud ini. Perubahan tidak dapat dibatalkan!`
+    );
+    if (!confirmRestore) return;
+
+    setIsProcessingCloud(true);
+    try {
+      const backupData = await downloadDriveBackup(activeToken, fileId);
+      
+      // Parse & validate backup
+      let restoredPelanggan = backupData.payload?.pelanggan || backupData.pelanggan;
+      let restoredTransaksi = backupData.payload?.transaksi || backupData.transaksi;
+      let restoredTanggal = backupData.payload?.tanggal || backupData.tanggal;
+      let restoredBiaya = backupData.payload?.biaya || backupData.biaya;
+
+      if (!restoredPelanggan && !restoredTransaksi && !restoredTanggal && !restoredBiaya) {
+        throw new Error("Format cadangan awan tidak valid atau kosong.");
+      }
+
+      restoredPelanggan = Array.isArray(restoredPelanggan) ? restoredPelanggan : [];
+      restoredTransaksi = Array.isArray(restoredTransaksi) ? restoredTransaksi : [];
+      restoredTanggal = Array.isArray(restoredTanggal) ? restoredTanggal : [];
+      restoredBiaya = Array.isArray(restoredBiaya) ? restoredBiaya : [];
+
+      onRestoreAllData({
+        pelanggan: restoredPelanggan,
+        transaksi: restoredTransaksi,
+        tanggal: restoredTanggal,
+        biaya: restoredBiaya
+      });
+
+      showStatus("success", `Restorasi cloud sukses! Memulihkan ${restoredPelanggan.length} pelanggan & ${restoredTransaksi.length} transaksi.`);
+    } catch (err: any) {
+      showStatus("error", "Gagal mengunduh/memulihkan cadangan dari cloud: " + err.message);
+    } finally {
+      setIsProcessingCloud(false);
+    }
+  };
+
+  const handleCloudDelete = async (fileId: string, fileName: string) => {
+    const activeToken = token || getAccessToken();
+    if (!activeToken) return;
+
+    const confirmDelete = window.confirm(`Apakah Anda yakin ingin menghapus file cadangan "${fileName}" dari Google Drive Anda?`);
+    if (!confirmDelete) return;
+
+    setIsProcessingCloud(true);
+    try {
+      await deleteDriveBackup(activeToken, fileId);
+      showStatus("success", "File cadangan di Google Drive berhasil dihapus!");
+      await loadCloudBackups(activeToken);
+    } catch (err: any) {
+      showStatus("error", "Gagal menghapus berkas di cloud: " + err.message);
+    } finally {
+      setIsProcessingCloud(false);
+    }
+  };
+
+  const showStatus = (type: "success" | "error" | "info", text: string) => {
     setStatusMsg({ type, text });
     setTimeout(() => {
       setStatusMsg(null);
     }, 6000);
   };
+
 
   const handleExportBackup = () => {
     try {
@@ -188,7 +386,9 @@ export default function BackupRestoreView({
         <div className={`p-4 rounded-xl border flex items-start gap-3 text-xs animate-slideDown ${
           statusMsg.type === "success" 
             ? "bg-emerald-50 border-emerald-100 text-emerald-900" 
-            : "bg-rose-50 border-rose-100 text-rose-900"
+            : statusMsg.type === "error"
+              ? "bg-rose-50 border-rose-100 text-rose-900"
+              : "bg-blue-50 border-blue-100 text-blue-900"
         }`}>
           {statusMsg.type === "success" ? (
             <CheckCircle size={18} className="text-emerald-600 shrink-0 mt-0.5" />
@@ -196,11 +396,171 @@ export default function BackupRestoreView({
             <AlertTriangle size={18} className="text-rose-600 shrink-0 mt-0.5" />
           )}
           <div>
-            <p className="font-bold underline">{statusMsg.type === "success" ? "Berhasil" : "Error Terjadi"}</p>
+            <p className="font-bold underline">
+              {statusMsg.type === "success" ? "Berhasil" : statusMsg.type === "error" ? "Error Terjadi" : "Informasi"}
+            </p>
             <p className="mt-0.5">{statusMsg.text}</p>
           </div>
         </div>
       )}
+
+      {/* SECTION: CLOUD BACKUP & RESTORE */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden flex flex-col" id="cloud-backup-restore-panel">
+        {/* Header Block */}
+        <div className="p-5 border-b border-slate-100 bg-emerald-950 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-emerald-800 rounded-lg text-emerald-300">
+              <Cloud size={18} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold font-sans text-left">Penyimpanan & Pencadangan Cloud (Google Drive)</h3>
+              <p className="text-[10px] text-emerald-200 mt-0.5 text-left">Amankan data secara online, sinkronkan ke akun Google Anda</p>
+            </div>
+          </div>
+          {isAuthenticated ? (
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-mono bg-emerald-700 text-white px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 shrink-0">
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
+                {userEmail || displayName || "Terhubung"}
+              </span>
+            </div>
+          ) : (
+            <span className="text-[9px] font-mono bg-emerald-900 text-emerald-350 px-2 py-0.5 rounded font-semibold uppercase self-start sm:self-auto">Belum Otorisasi</span>
+          )}
+        </div>
+
+        {/* Content area */}
+        <div className="p-6 space-y-6 text-left">
+          {!isAuthenticated ? (
+            <div className="text-center py-6 max-w-lg mx-auto space-y-4">
+              <div className="inline-flex p-3 bg-emerald-50 text-emerald-600 rounded-full">
+                <Cloud size={24} className="animate-pulse" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-800">Hubungkan dengan Google Drive</h4>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  Dengan mengotorisasi akses cloud Google Drive, Anda dapat menyimpan file cadangan secara online dan mengimpornya kembali kapan saja dengan aman.
+                </p>
+              </div>
+              <button 
+                type="button"
+                onClick={handleLoginGoogle}
+                disabled={isLoadingAuth || isProcessingCloud}
+                className="gsi-material-button text-slate-700 relative flex items-center justify-center gap-3 px-5 py-2.5 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 text-xs font-bold transition shadow-xs hover:shadow-md cursor-pointer mx-auto disabled:opacity-50"
+              >
+                {isLoadingAuth || isProcessingCloud ? (
+                  <Loader2 size={16} className="animate-spin text-indigo-600" />
+                ) : (
+                  <>
+                    <div className="gsi-material-button-icon shrink-0">
+                      <svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="w-[16px] h-[16px] block">
+                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path>
+                        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path>
+                        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path>
+                        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path>
+                      </svg>
+                    </div>
+                    <span>Hubungkan Akun Google</span>
+                  </>
+                )}
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Actions Area */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800">Cadangkan Data Saat Ini ke Google Drive</h4>
+                  <p className="text-[10px] text-slate-500 mt-0.5">Sistem akan menyusun berkas backup berformat JSON dan menyimpannya secara instan di Drive Anda.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCloudBackup}
+                  disabled={isProcessingCloud}
+                  className="px-4 py-2.5 bg-emerald-650 hover:bg-emerald-750 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition cursor-pointer shrink-0 disabled:opacity-50"
+                >
+                  {isProcessingCloud ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <CloudUpload size={14} />
+                  )}
+                  Buat Cloud Backup Baru
+                </button>
+              </div>
+
+              {/* Backups List Area */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-800 font-mono flex items-center gap-1.5">
+                    <Database size={14} className="text-slate-400" />
+                    Daftar File Cadangan di Google Drive ({driveBackups.length})
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => token && loadCloudBackups(token)}
+                    disabled={isProcessingCloud}
+                    className="p-1.5 text-slate-500 hover:text-indigo-600 rounded-lg border border-slate-200 hover:border-slate-350 cursor-pointer transition"
+                    title="Refresh List"
+                  >
+                    <RefreshCw size={13} className={isProcessingCloud ? "animate-spin" : ""} />
+                  </button>
+                </div>
+
+                {isProcessingCloud && driveBackups.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-500">
+                    <Loader2 size={20} className="animate-spin text-indigo-600 mb-2" />
+                    <span className="text-[10.5px] font-mono">Menghubungkan & mengunduh metadata dari Google Drive...</span>
+                  </div>
+                ) : driveBackups.length === 0 ? (
+                  <div className="text-center p-8 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-400 text-[11px] leading-relaxed">
+                    Belum ditemukan file cadangan awan (`TagihanPay_CloudBackup`) di Google Drive Anda.<br />
+                    Mulai dengan mengklik **"Buat Cloud Backup Baru"** untuk mengamankan data pertama Anda.
+                  </div>
+                ) : (
+                  <div className="border border-slate-150 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-[250px] overflow-y-auto">
+                    {driveBackups.map((file) => (
+                      <div key={file.id} className="p-3.5 bg-white hover:bg-slate-50 flex items-center justify-between gap-3 text-xs transition">
+                        <div className="space-y-1 min-w-0 flex-1 text-left">
+                          <p className="font-semibold text-slate-800 truncate" title={file.name}>
+                            {file.name}
+                          </p>
+                          <div className="flex items-center gap-3 text-[10px] text-slate-400 font-mono">
+                            <span>Waktu: {new Date(file.createdTime).toLocaleString("id-ID")}</span>
+                            <span>•</span>
+                            <span>Ukuran: {(Number(file.size || 0) / 1024).toFixed(1)} KB</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleCloudRestore(file.id, file.name)}
+                            disabled={isProcessingCloud}
+                            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 text-[11px] font-bold rounded-lg transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                            title="Pulihkan data ini"
+                          >
+                            <CloudDownload size={13} />
+                            Pulihkan (Restore)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCloudDelete(file.id, file.name)}
+                            disabled={isProcessingCloud}
+                            className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition cursor-pointer disabled:opacity-50 animate-fadeIn"
+                            title="Hapus cadangan"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Main Core 2 Column grid for doing the actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="backup-actions-grid">
