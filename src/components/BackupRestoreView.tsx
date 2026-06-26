@@ -27,6 +27,11 @@ import {
   downloadDriveBackup,
   deleteDriveBackup
 } from "../lib/googleSheets";
+import {
+  auth as firestoreAuth,
+  publishDataToFirestore,
+  downloadDataFromFirestore
+} from "../lib/firestore";
 
 interface BackupRestoreViewProps {
   pelangganList: Pelanggan[];
@@ -63,6 +68,12 @@ export default function BackupRestoreView({
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isProcessingCloud, setIsProcessingCloud] = useState(false);
   const [driveBackups, setDriveBackups] = useState<any[]>([]);
+
+  // Firestore Database Publish states
+  const [isProcessingFirestore, setIsProcessingFirestore] = useState(false);
+  const [firestoreLastSync, setFirestoreLastSync] = useState<string | null>(() => {
+    return localStorage.getItem("tagihanpay_firestore_last_sync") || null;
+  });
 
   // Monitor Auth State for Cloud integration
   useEffect(() => {
@@ -241,6 +252,96 @@ export default function BackupRestoreView({
     setTimeout(() => {
       setStatusMsg(null);
     }, 6000);
+  };
+
+  const handleFirestorePublish = async () => {
+    if (!isAuthenticated) {
+      showStatus("error", "Silakan hubungkan Akun Google terlebih dahulu.");
+      return;
+    }
+
+    const currentUid = firestoreAuth.currentUser?.uid;
+    if (!currentUid) {
+      showStatus("error", "ID Pengguna tidak ditemukan. Silakan hubungkan kembali Akun Google.");
+      return;
+    }
+
+    setIsProcessingFirestore(true);
+    try {
+      await publishDataToFirestore(currentUid, {
+        pelanggan: pelangganList,
+        transaksi: transaksiList,
+        tanggal: tanggalList,
+        biaya: biayaList
+      });
+
+      const nowStr = new Date().toLocaleString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
+
+      setFirestoreLastSync(nowStr);
+      localStorage.setItem("tagihanpay_firestore_last_sync", nowStr);
+      showStatus("success", "Seluruh database berhasil diterbitkan & disinkronkan ke Cloud Database Publish!");
+    } catch (err: any) {
+      showStatus("error", "Gagal menerbitkan database ke cloud: " + err.message);
+    } finally {
+      setIsProcessingFirestore(false);
+    }
+  };
+
+  const handleFirestoreRestore = async () => {
+    if (!isAuthenticated) {
+      showStatus("error", "Silakan hubungkan Akun Google terlebih dahulu.");
+      return;
+    }
+
+    const currentUid = firestoreAuth.currentUser?.uid;
+    if (!currentUid) {
+      showStatus("error", "ID Pengguna tidak ditemukan. Silakan hubungkan kembali Akun Google.");
+      return;
+    }
+
+    const confirmRestore = window.confirm(
+      "⚠️ KONFIRMASI RESTORE DATABASE CLOUD\n\nApakah Anda yakin ingin mengimpor data aktif dari cloud?\n\n" +
+      "🚨 PERINGATAN: Seluruh data di browser Anda saat ini akan di-overwrite & diganti dengan data dari cloud database. Tindakan ini tidak dapat dibatalkan!"
+    );
+    if (!confirmRestore) return;
+
+    setIsProcessingFirestore(true);
+    try {
+      const dbData = await downloadDataFromFirestore(currentUid);
+
+      if (
+        dbData.pelanggan.length === 0 &&
+        dbData.transaksi.length === 0 &&
+        dbData.tanggal.length === 0 &&
+        dbData.biaya.length === 0
+      ) {
+        showStatus("error", "Database cloud kosong. Anda belum pernah menerbitkan data apa pun ke cloud.");
+        return;
+      }
+
+      onRestoreAllData({
+        pelanggan: dbData.pelanggan,
+        transaksi: dbData.transaksi,
+        tanggal: dbData.tanggal,
+        biaya: dbData.biaya
+      });
+
+      showStatus(
+        "success",
+        `Sinkronisasi balik berhasil! Memulihkan ${dbData.pelanggan.length} pelanggan & ${dbData.transaksi.length} transaksi dari cloud database.`
+      );
+    } catch (err: any) {
+      showStatus("error", "Gagal memulihkan database dari cloud: " + err.message);
+    } finally {
+      setIsProcessingFirestore(false);
+    }
   };
 
 
@@ -556,6 +657,108 @@ export default function BackupRestoreView({
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* SECTION: DATABASE PUBLISH (FIRESTORE) */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden flex flex-col" id="firestore-publish-panel">
+        {/* Header Block */}
+        <div className="p-5 border-b border-slate-100 bg-indigo-950 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-indigo-800 rounded-lg text-indigo-300">
+              <Database size={18} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold font-sans text-left">Database Publish (Firestore Cloud)</h3>
+              <p className="text-[10px] text-indigo-200 mt-0.5 text-left">Publikasikan database lokal secara online untuk backup andal jangka panjang</p>
+            </div>
+          </div>
+          {isAuthenticated ? (
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-mono bg-indigo-700 text-white px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1 shrink-0">
+                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-ping"></span>
+                Firestore Active
+              </span>
+            </div>
+          ) : (
+            <span className="text-[9px] font-mono bg-indigo-900 text-indigo-350 px-2 py-0.5 rounded font-semibold uppercase self-start sm:self-auto">Otorisasi Diperlukan</span>
+          )}
+        </div>
+
+        {/* Content area */}
+        <div className="p-6 text-left">
+          {!isAuthenticated ? (
+            <div className="text-center py-4 max-w-lg mx-auto space-y-3">
+              <p className="text-[11px] text-slate-500 leading-relaxed font-sans">
+                Hubungkan dengan Akun Google di atas untuk membuka fitur publikasi database cloud Firestore.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Publish Action Block */}
+                <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-4 flex flex-col justify-between">
+                  <div className="space-y-1.5">
+                    <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <CloudUpload size={14} className="text-indigo-600" />
+                      Terbitkan Database Lokal
+                    </h4>
+                    <p className="text-[10.5px] text-slate-500 leading-relaxed">
+                      Kirim data pelanggan, riwayat transaksi, pengaturan jatuh tempo, dan tarif saat ini dari browser ini ke Firestore. Data yang ada di cloud sebelumnya akan disesuaikan.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    {firestoreLastSync && (
+                      <div className="text-[10px] text-slate-500 font-mono bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-150">
+                        Penerbitan Terakhir: {firestoreLastSync}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleFirestorePublish}
+                      disabled={isProcessingFirestore || isProcessingCloud}
+                      className="w-full py-2.5 bg-indigo-650 hover:bg-indigo-750 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
+                    >
+                      {isProcessingFirestore ? (
+                        <Loader2 size={14} className="animate-spin" />
+                      ) : (
+                        <CloudUpload size={14} />
+                      )}
+                      Publikasikan Data ke Cloud
+                    </button>
+                  </div>
+                </div>
+
+                {/* Pull / Restore Action Block */}
+                <div className="p-5 border border-slate-200 rounded-2xl bg-slate-50/50 space-y-4 flex flex-col justify-between">
+                  <div className="space-y-1.5">
+                    <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <CloudDownload size={14} className="text-emerald-650" />
+                      Tarik & Pulihkan dari Cloud
+                    </h4>
+                    <p className="text-[10.5px] text-slate-500 leading-relaxed">
+                      Tarik seluruh salinan database yang dipublikasikan di cloud Firestore untuk menggantikan database lokal saat ini. Cocok untuk sinkronisasi perangkat baru.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleFirestoreRestore}
+                    disabled={isProcessingFirestore || isProcessingCloud}
+                    className="w-full py-2.5 bg-emerald-650 hover:bg-emerald-750 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
+                  >
+                    {isProcessingFirestore ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <CloudDownload size={14} />
+                    )}
+                    Tarik & Timpa Data Lokal
+                  </button>
+                </div>
               </div>
             </div>
           )}

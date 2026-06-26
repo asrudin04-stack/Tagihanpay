@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "Pelanggan": {
+      "title": "Pelanggan",
+      "description": "Data Pelanggan TagihanPay",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "ID Pelanggan (PLG-YYYY-XXXX)" },
+        "nama": { "type": "string", "description": "Nama Pelanggan" },
+        "noTelp": { "type": "string", "description": "Nomor WhatsApp Pelanggan" },
+        "alamat": { "type": "string", "description": "Alamat Lengkap Pelanggan" },
+        "layanan": { "type": "string", "enum": ["PLN", "PDAM", "WIFI"] },
+        "noMeter": { "type": "string", "description": "Nomor Meteran atau ID Pelanggan" },
+        "idTarif": { "type": "string", "description": "ID Paket Tarif" },
+        "idTanggal": { "type": "string", "description": "ID Jadwal Tanggal Jatuh Tempo" },
+        "nominalTarif": { "type": "number", "description": "Nominal kustom jika ada" }
+      },
+      "required": ["id", "nama", "noTelp", "alamat", "layanan", "noMeter"]
+    },
+    "TanggalPembayaran": {
+      "title": "TanggalPembayaran",
+      "description": "Jadwal Jatuh Tempo Tagihan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "layanan": { "type": "string", "enum": ["PLN", "PDAM", "WIFI"] },
+        "namaJadwal": { "type": "string" },
+        "tanggalJatuhTempo": { "type": "number" },
+        "bulanAktif": { "type": "string" }
+      },
+      "required": ["id", "layanan", "namaJadwal", "tanggalJatuhTempo", "bulanAktif"]
+    },
+    "BiayaTarif": {
+      "title": "BiayaTarif",
+      "description": "Paket Tarif Layanan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "layanan": { "type": "string", "enum": ["PLN", "PDAM", "WIFI"] },
+        "namaPaket": { "type": "string" },
+        "biayaPerBulan": { "type": "number" }
+      },
+      "required": ["id", "layanan", "namaPaket", "biayaPerBulan"]
+    },
+    "Transaksi": {
+      "title": "Transaksi",
+      "description": "Riwayat Transaksi Pembayaran",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "idPelanggan": { "type": "string" },
+        "namaPelanggan": { "type": "string" },
+        "layanan": { "type": "string", "enum": ["PLN", "PDAM", "WIFI"] },
+        "periode": { "type": "string" },
+        "jumlahBayar": { "type": "number" },
+        "metodePembayaran": { "type": "string", "enum": ["Tunai", "Transfer"] },
+        "tanggalBayar": { "type": "string" },
+        "keterangan": { "type": "string" },
+        "noReff": { "type": "string" },
+        "status": { "type": "string", "enum": ["LUNAS", "MENUNGGU"] }
+      },
+      "required": ["id", "idPelanggan", "namaPelanggan", "layanan", "periode", "jumlahBayar", "metodePembayaran", "tanggalBayar"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/pelanggan/{id}": {
+      "schema": "Pelanggan",
+      "description": "Subkoleksi data pelanggan milik pengguna tertentu"
+    },
+    "/users/{userId}/tanggal/{id}": {
+      "schema": "TanggalPembayaran",
+      "description": "Subkoleksi data jadwal jatuh tempo"
+    },
+    "/users/{userId}/biaya/{id}": {
+      "schema": "BiayaTarif",
+      "description": "Subkoleksi tarif layanan"
+    },
+    "/users/{userId}/transaksi/{id}": {
+      "schema": "Transaksi",
+      "description": "Subkoleksi riwayat transaksi"
+    }
+  }
+}

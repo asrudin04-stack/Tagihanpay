@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global reusable helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Entity-specific validation helpers
+    function isValidPelanggan(data) {
+      return data.keys().hasAll(['id', 'nama', 'noTelp', 'alamat', 'layanan', 'noMeter'])
+        && data.keys().size() >= 6
+        && data.keys().size() <= 9
+        && data.id is string && data.id.size() <= 64
+        && data.nama is string && data.nama.size() <= 200
+        && data.noTelp is string && data.noTelp.size() <= 32
+        && data.alamat is string && data.alamat.size() <= 500
+        && data.layanan in ['PLN', 'PDAM', 'WIFI']
+        && data.noMeter is string && data.noMeter.size() <= 100
+        && (!data.keys().hasAny(['idTarif']) || data.idTarif is string)
+        && (!data.keys().hasAny(['idTanggal']) || data.idTanggal is string)
+        && (!data.keys().hasAny(['nominalTarif']) || data.nominalTarif is number);
+    }
+
+    function isValidTanggal(data) {
+      return data.keys().hasAll(['id', 'layanan', 'namaJadwal', 'tanggalJatuhTempo', 'bulanAktif'])
+        && data.keys().size() == 5
+        && data.id is string && data.id.size() <= 64
+        && data.layanan in ['PLN', 'PDAM', 'WIFI']
+        && data.namaJadwal is string && data.namaJadwal.size() <= 200
+        && data.tanggalJatuhTempo is number && data.tanggalJatuhTempo >= 1 && data.tanggalJatuhTempo <= 31
+        && data.bulanAktif is string && data.bulanAktif.size() <= 100;
+    }
+
+    function isValidBiaya(data) {
+      return data.keys().hasAll(['id', 'layanan', 'namaPaket', 'biayaPerBulan'])
+        && data.keys().size() == 4
+        && data.id is string && data.id.size() <= 64
+        && data.layanan in ['PLN', 'PDAM', 'WIFI']
+        && data.namaPaket is string && data.namaPaket.size() <= 200
+        && data.biayaPerBulan is number && data.biayaPerBulan >= 0;
+    }
+
+    function isValidTransaksi(data) {
+      return data.keys().hasAll(['id', 'idPelanggan', 'namaPelanggan', 'layanan', 'periode', 'jumlahBayar', 'metodePembayaran', 'tanggalBayar'])
+        && data.keys().size() >= 8
+        && data.keys().size() <= 11
+        && data.id is string && data.id.size() <= 64
+        && data.idPelanggan is string && data.idPelanggan.size() <= 64
+        && data.namaPelanggan is string && data.namaPelanggan.size() <= 200
+        && data.layanan in ['PLN', 'PDAM', 'WIFI']
+        && data.periode is string && data.periode.size() <= 10
+        && data.jumlahBayar is number && data.jumlahBayar >= 0
+        && data.metodePembayaran in ['Tunai', 'Transfer']
+        && data.tanggalBayar is string && data.tanggalBayar.size() <= 50
+        && (!data.keys().hasAny(['keterangan']) || data.keterangan is string)
+        && (!data.keys().hasAny(['noReff']) || data.noReff is string)
+        && (!data.keys().hasAny(['status']) || data.status in ['LUNAS', 'MENUNGGU']);
+    }
+
+    // Match block for users subcollections
+    match /users/{userId} {
+      
+      // Let the user manage their own root document
+      allow read, write: if isOwner(userId) && isValidId(userId);
+
+      match /pelanggan/{id} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(id) && isValidPelanggan(request.resource.data);
+        allow update: if isOwner(userId) && isValidId(id) && isValidPelanggan(request.resource.data);
+        allow delete: if isOwner(userId) && isValidId(id);
+      }
+
+      match /tanggal/{id} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(id) && isValidTanggal(request.resource.data);
+        allow update: if isOwner(userId) && isValidId(id) && isValidTanggal(request.resource.data);
+        allow delete: if isOwner(userId) && isValidId(id);
+      }
+
+      match /biaya/{id} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(id) && isValidBiaya(request.resource.data);
+        allow update: if isOwner(userId) && isValidId(id) && isValidBiaya(request.resource.data);
+        allow delete: if isOwner(userId) && isValidId(id);
+      }
+
+      match /transaksi/{id} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(id) && isValidTransaksi(request.resource.data);
+        allow update: if isOwner(userId) && isValidId(id) && isValidTransaksi(request.resource.data);
+        allow delete: if isOwner(userId) && isValidId(id);
+      }
+    }
+  }
+}
